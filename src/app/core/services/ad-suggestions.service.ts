@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, catchError, of, Subject, interval, Subscription } from 'rxjs';
-import { Campaign, Keyword, SearchTerm, AdCopy } from './google-ads.service';
+import { Observable, Subject, interval, Subscription, catchError, of } from 'rxjs';
 
 export interface KeywordSuggestion {
   action: 'add' | 'pause' | 'modify';
@@ -32,42 +31,89 @@ export interface GeneralRecommendation {
   expectedImpact: string;
 }
 
+export interface PeriodInsights {
+  dateRange: string;
+  daysAnalyzed: number;
+  totalSpend: number;
+  totalRevenue: number;
+  netPosition: number;
+  costPerCaseStart: number;
+  costPerPaidConversion: number;
+  revenueToSpendRatio: number;
+  dataQualityNote: string;
+}
+
+export interface KeywordOpportunity {
+  keyword: string;
+  matchType: 'PHRASE' | 'EXACT';
+  source: 'confirmed_gap' | 'claude_hypothesis';
+  evidence: string;
+  intentScore: 'high' | 'medium';
+  actualCpcPaid: number | null;
+  priority: 'high' | 'medium' | 'low';
+  rationale: string;
+}
+
+export interface SearchTermsAnalysis {
+  totalSearchTerms: number;
+  confirmedGaps: number;
+  confirmedWaste: number;
+  totalWastedOnWrongIntent: number;
+  alreadyNegated: number;
+}
+
+export interface ExistingNegative {
+  keyword: string;
+  matchType: 'EXACT' | 'PHRASE' | 'BROAD' | 'UNKNOWN';
+  scope: 'campaign' | 'account';
+}
+
+export interface AlreadyCovered {
+  keyword: string;
+  wastedSpend: number;
+  note: string;
+}
+
+export interface NegativeKeywordAudit {
+  existingNegatives: ExistingNegative[];
+  alreadyCovered: AlreadyCovered[];
+  gaps: NegativeKeywordSuggestion[];
+  coverageScore: string;
+}
+
 export interface AdSuggestionsData {
+  periodInsights?: PeriodInsights;
   performanceSummary: string;
   keywordSuggestions: KeywordSuggestion[];
   negativeKeywordSuggestions: NegativeKeywordSuggestion[];
   adCopySuggestions: AdCopySuggestion[];
   generalRecommendations: GeneralRecommendation[];
+  keywordOpportunities?: KeywordOpportunity[];
+  searchTermsAnalysis?: SearchTermsAnalysis;
+  negativeKeywordAudit?: NegativeKeywordAudit;
   generatedAt?: string;
-  campaignAnalyzed?: string;
-  period?: string;
+  dateRange?: {
+    startDate: string;
+    endDate: string;
+    daysAnalyzed: number;
+  };
   error?: string;
   message?: string;
   isMockData?: boolean;
 }
 
 export interface AdSuggestionsRequest {
-  campaign: Campaign;
-  metrics: {
-    spend: number;
-    clicks: number;
-    impressions: number;
-    ctr: number;
-    cpc: number;
-    conversions: number;
-    costPerConversion: number;
-  };
-  keywords: Keyword[];
-  searchTerms: SearchTerm[];
-  ads: AdCopy[];
-  period: string;
+  startDate: string;
+  endDate: string;
+  customerId?: string;
 }
 
 interface JobResponse {
-  status?: 'processing' | 'complete' | 'error';
+  status: 'processing' | 'complete' | 'error';
   jobId?: string;
-  message?: string;
+  result?: AdSuggestionsData;
   error?: string;
+  message?: string;
 }
 
 @Injectable({
@@ -85,40 +131,31 @@ export class AdSuggestionsService {
 
     const result$ = new Subject<AdSuggestionsData>();
 
+    console.log('Starting ad suggestions request:', request);
+
     // Start the job
     this.http.post<JobResponse>(this.apiUrl, request).pipe(
       catchError(error => {
-        console.error('Failed to start job:', error);
-        return of({ error: error.message || 'Failed to start analysis' } as JobResponse);
+        console.error('Failed to start job - full error:', error);
+        const errorMsg = error.error?.error || error.message || 'Failed to start analysis';
+        return of({ status: 'error' as const, error: errorMsg, jobId: undefined as string | undefined });
       })
     ).subscribe(response => {
-      console.log('Job start response:', response);
+      console.log('Job start response (full):', JSON.stringify(response));
 
-      if (response.error && !response.jobId) {
-        result$.next({
-          performanceSummary: '',
-          keywordSuggestions: [],
-          negativeKeywordSuggestions: [],
-          adCopySuggestions: [],
-          generalRecommendations: [],
-          error: response.error
-        });
+      if (response.status === 'error' && !response.jobId) {
+        console.log('Error response without jobId, showing error');
+        result$.next(this.createEmptyResult(response.error || 'Failed to start analysis'));
         result$.complete();
         return;
       }
 
       if (response.jobId) {
-        // Start polling
+        console.log('Got jobId, starting polling:', response.jobId);
         this.startPolling(response.jobId, result$);
       } else {
-        result$.next({
-          performanceSummary: '',
-          keywordSuggestions: [],
-          negativeKeywordSuggestions: [],
-          adCopySuggestions: [],
-          generalRecommendations: [],
-          error: 'No job ID returned'
-        });
+        console.log('No jobId in response, showing error');
+        result$.next(this.createEmptyResult('No job ID returned'));
         result$.complete();
       }
     });
@@ -126,69 +163,66 @@ export class AdSuggestionsService {
     return result$.asObservable();
   }
 
+  private createEmptyResult(error: string): AdSuggestionsData {
+    return {
+      performanceSummary: '',
+      keywordSuggestions: [],
+      negativeKeywordSuggestions: [],
+      adCopySuggestions: [],
+      generalRecommendations: [],
+      error
+    };
+  }
+
   private startPolling(jobId: string, result$: Subject<AdSuggestionsData>): void {
     let attempts = 0;
-    const maxAttempts = 90; // 3 minutes max (90 * 2 seconds)
+    const maxAttempts = 120; // 4 minutes max (120 * 2 seconds)
 
     console.log(`Starting to poll for job ${jobId}`);
 
     this.pollingSubscription = interval(2000).subscribe(() => {
       attempts++;
-      console.log(`Poll attempt ${attempts} for job ${jobId}`);
 
       if (attempts > maxAttempts) {
         console.log('Polling timed out');
         this.cancelPolling();
-        result$.next({
-          performanceSummary: '',
-          keywordSuggestions: [],
-          negativeKeywordSuggestions: [],
-          adCopySuggestions: [],
-          generalRecommendations: [],
-          error: 'Analysis timed out after 3 minutes. Please try again.'
-        });
+        result$.next(this.createEmptyResult('Analysis timed out after 4 minutes. Please try again.'));
         result$.complete();
         return;
       }
 
-      this.http.get<AdSuggestionsData & JobResponse>(`${this.apiUrl}?jobId=${jobId}`).subscribe({
+      this.http.get<JobResponse>(`${this.apiUrl}?jobId=${jobId}`).subscribe({
         next: (response) => {
-          console.log('Poll response:', response);
+          console.log(`Poll attempt ${attempts} for job ${jobId}:`, JSON.stringify(response));
 
-          // Check if still processing (status 202)
           if (response.status === 'processing') {
-            console.log('Still processing...');
-            return; // Continue polling
+            // Continue polling silently (log every 5th attempt)
+            if (attempts % 5 === 0) {
+              console.log(`Still processing after ${attempts} attempts...`);
+            }
+            return;
           }
 
           // Got final result or error
           this.cancelPolling();
 
-          if (response.error) {
-            result$.next({
-              performanceSummary: '',
-              keywordSuggestions: [],
-              negativeKeywordSuggestions: [],
-              adCopySuggestions: [],
-              generalRecommendations: [],
-              error: response.error
-            });
+          if (response.status === 'error') {
+            console.log('Job returned error:', response.error);
+            result$.next(this.createEmptyResult(response.error || 'Analysis failed'));
+          } else if (response.status === 'complete' && response.result) {
+            console.log('Job completed successfully');
+            result$.next(response.result);
           } else {
-            result$.next(response);
+            console.log('Unexpected response format:', response);
+            result$.next(this.createEmptyResult('Unexpected response format'));
           }
           result$.complete();
         },
         error: (err) => {
-          console.error('Poll error:', err);
+          console.error('Poll HTTP error:', err);
           this.cancelPolling();
-          result$.next({
-            performanceSummary: '',
-            keywordSuggestions: [],
-            negativeKeywordSuggestions: [],
-            adCopySuggestions: [],
-            generalRecommendations: [],
-            error: err.message || 'Polling failed'
-          });
+          const errorMsg = err.error?.error || err.message || 'Polling failed';
+          result$.next(this.createEmptyResult(errorMsg));
           result$.complete();
         }
       });

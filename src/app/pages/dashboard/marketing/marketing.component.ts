@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
@@ -11,7 +12,7 @@ import { AdSuggestionsService, AdSuggestionsData } from '../../../core/services/
 @Component({
   selector: 'app-marketing',
   standalone: true,
-  imports: [CommonModule, LoadingSkeletonComponent],
+  imports: [CommonModule, FormsModule, LoadingSkeletonComponent],
   templateUrl: './marketing.component.html'
 })
 export class MarketingComponent implements OnInit, OnDestroy {
@@ -27,6 +28,10 @@ export class MarketingComponent implements OnInit, OnDestroy {
     { value: 'week' as GoogleAdsPeriod, label: 'This Week' },
     { value: 'month' as GoogleAdsPeriod, label: 'This Month' }
   ];
+
+  // Date range for AI analysis
+  analysisStartDate: string = '';
+  analysisEndDate: string = '';
 
   loadingStates = {
     klaviyo: false,
@@ -47,7 +52,15 @@ export class MarketingComponent implements OnInit, OnDestroy {
     private klaviyoService: KlaviyoService,
     private googleAdsService: GoogleAdsService,
     private adSuggestionsService: AdSuggestionsService
-  ) {}
+  ) {
+    // Initialize date range to last 30 days
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    this.analysisEndDate = this.formatDateForInput(today);
+    this.analysisStartDate = this.formatDateForInput(thirtyDaysAgo);
+  }
 
   ngOnInit(): void {
     this.refreshAll();
@@ -56,6 +69,10 @@ export class MarketingComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private formatDateForInput(date: Date): string {
+    return date.toISOString().split('T')[0];
   }
 
   refreshAll(): void {
@@ -123,15 +140,21 @@ export class MarketingComponent implements OnInit, OnDestroy {
     return this.googleAdsData.campaigns.find(c => c.name === this.googleAdsData?.targetCampaign) || null;
   }
 
+  getAnalysisDays(): number {
+    if (!this.analysisStartDate || !this.analysisEndDate) return 0;
+    const start = new Date(this.analysisStartDate);
+    const end = new Date(this.analysisEndDate);
+    return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  }
+
   loadSuggestions(): void {
-    if (!this.googleAdsData || this.googleAdsData.isMockData) {
-      this.errors.suggestions = 'Connect Google Ads to get AI suggestions';
+    if (!this.analysisStartDate || !this.analysisEndDate) {
+      this.errors.suggestions = 'Please select a date range for analysis';
       return;
     }
 
-    const targetCampaign = this.getTargetCampaign();
-    if (!targetCampaign) {
-      this.errors.suggestions = 'Target campaign not found';
+    if (new Date(this.analysisStartDate) > new Date(this.analysisEndDate)) {
+      this.errors.suggestions = 'Start date must be before end date';
       return;
     }
 
@@ -139,22 +162,8 @@ export class MarketingComponent implements OnInit, OnDestroy {
     this.errors.suggestions = '';
 
     const request = {
-      campaign: targetCampaign,
-      metrics: {
-        spend: targetCampaign.spend,
-        clicks: targetCampaign.clicks,
-        impressions: targetCampaign.impressions,
-        ctr: targetCampaign.ctr || 0,
-        cpc: targetCampaign.cpc,
-        conversions: targetCampaign.conversions,
-        costPerConversion: targetCampaign.conversions > 0
-          ? targetCampaign.spend / targetCampaign.conversions
-          : 0
-      },
-      keywords: this.googleAdsData.keywords || [],
-      searchTerms: this.googleAdsData.searchTerms || [],
-      ads: this.googleAdsData.ads || [],
-      period: this.selectedPeriod
+      startDate: this.analysisStartDate,
+      endDate: this.analysisEndDate
     };
 
     this.adSuggestionsService.getSuggestions(request)
@@ -246,5 +255,19 @@ export class MarketingComponent implements OnInit, OnDestroy {
   getTotalCampaignClicks(): number {
     if (!this.googleAdsData?.campaigns) return 0;
     return this.googleAdsData.campaigns.reduce((sum, c) => sum + c.clicks, 0);
+  }
+
+  getNetPositionClass(): string {
+    const netPosition = this.suggestionsData?.periodInsights?.netPosition || 0;
+    if (netPosition > 0) return 'text-green-400';
+    if (netPosition < 0) return 'text-red-400';
+    return 'text-slate-400';
+  }
+
+  getRoasClass(): string {
+    const roas = this.suggestionsData?.periodInsights?.revenueToSpendRatio || 0;
+    if (roas >= 2) return 'text-green-400';
+    if (roas >= 1) return 'text-amber-400';
+    return 'text-red-400';
   }
 }

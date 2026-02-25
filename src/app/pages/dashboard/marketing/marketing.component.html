@@ -386,23 +386,6 @@
     <section class="mt-8">
       <div class="flex items-center justify-between mb-4">
         <h2 class="section-header mb-0">{{ googleAdsData.targetCampaign }} - Deep Dive</h2>
-        <button
-          (click)="loadSuggestions()"
-          [disabled]="loadingStates.suggestions"
-          class="btn-primary flex items-center text-sm"
-        >
-          @if (loadingStates.suggestions) {
-            <svg class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Analyzing...
-          } @else {
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
-            Get AI Suggestions
-          }
-        </button>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -559,183 +542,458 @@
         </div>
       }
     </section>
+  }
 
-    <!-- AI Suggestions Section -->
-    @if (suggestionsData || loadingStates.suggestions || errors.suggestions) {
-      <section class="mt-8">
-        <h2 class="section-header">AI Optimization Suggestions</h2>
+  <!-- AI Analysis Section -->
+  <section class="mt-8">
+    <h2 class="section-header">AI Campaign Analysis</h2>
 
-        @if (loadingStates.suggestions) {
-          <div class="card">
-            <div class="flex items-center justify-center py-8">
-              <svg class="w-8 h-8 text-indigo-400 animate-spin mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <!-- Date Range Selector & Generate Button -->
+    <div class="card mb-6">
+      <div class="flex flex-col md:flex-row md:items-end gap-4">
+        <div class="flex-1">
+          <h3 class="text-sm font-medium text-slate-300 mb-3">Analysis Date Range</h3>
+          <div class="flex flex-col sm:flex-row gap-3">
+            <div class="flex-1">
+              <label class="block text-xs text-slate-400 mb-1">Start Date</label>
+              <input
+                type="date"
+                [(ngModel)]="analysisStartDate"
+                class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 text-sm focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+            <div class="flex-1">
+              <label class="block text-xs text-slate-400 mb-1">End Date</label>
+              <input
+                type="date"
+                [(ngModel)]="analysisEndDate"
+                class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 text-sm focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+          </div>
+          <p class="text-xs text-slate-500 mt-2">
+            Analyzing {{ getAnalysisDays() }} days of data from Google Ads, Stripe, and Supabase
+          </p>
+        </div>
+        <div class="flex-shrink-0">
+          <button
+            (click)="loadSuggestions()"
+            [disabled]="loadingStates.suggestions"
+            class="btn-primary flex items-center w-full md:w-auto justify-center"
+          >
+            @if (loadingStates.suggestions) {
+              <svg class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              <span class="text-slate-300">Analyzing campaign data with AI...</span>
-            </div>
+              Analyzing...
+            } @else {
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              Generate AI Brief
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Suggestions Results -->
+    @if (loadingStates.suggestions) {
+      <div class="card">
+        <div class="flex items-center justify-center py-12">
+          <svg class="w-10 h-10 text-indigo-400 animate-spin mr-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <div>
+            <p class="text-slate-300 font-medium">Analyzing campaign data...</p>
+            <p class="text-xs text-slate-500 mt-1">Fetching Google Ads, Stripe, and Supabase data, then generating AI insights</p>
           </div>
-        } @else if (errors.suggestions) {
-          <div class="card">
-            <div class="text-center py-4">
-              <p class="text-red-500 mb-2">{{ errors.suggestions }}</p>
-              <button (click)="loadSuggestions()" class="text-indigo-400 hover:text-indigo-300 underline text-sm">
-                Retry
-              </button>
-            </div>
+        </div>
+      </div>
+    } @else if (errors.suggestions) {
+      <div class="card">
+        <div class="text-center py-6">
+          <svg class="w-12 h-12 mx-auto text-red-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <p class="text-red-400 mb-2">{{ errors.suggestions }}</p>
+          <button (click)="loadSuggestions()" class="text-indigo-400 hover:text-indigo-300 underline text-sm">
+            Try Again
+          </button>
+        </div>
+      </div>
+    } @else if (suggestionsData) {
+      <!-- Period Insights KPIs -->
+      @if (suggestionsData.periodInsights) {
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
+          <div class="card text-center">
+            <p class="text-xs text-slate-400 mb-1">Period</p>
+            <p class="text-sm font-medium text-slate-200">{{ suggestionsData.periodInsights.dateRange }}</p>
+            <p class="text-xs text-slate-500">{{ suggestionsData.periodInsights.daysAnalyzed }} days</p>
           </div>
-        } @else if (suggestionsData) {
-          <!-- Performance Summary -->
-          @if (suggestionsData.performanceSummary) {
-            <div class="card mb-6 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border-indigo-500/30">
-              <div class="flex items-start">
-                <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div>
-                  <p class="text-sm font-medium text-slate-200 mb-1">Performance Summary</p>
-                  <p class="text-sm text-slate-300">{{ suggestionsData.performanceSummary }}</p>
-                </div>
-              </div>
-            </div>
-          }
-
-          <!-- Negative Keywords Section (Priority) -->
-          @if (suggestionsData.negativeKeywordSuggestions && suggestionsData.negativeKeywordSuggestions.length > 0) {
-            <div class="card mb-6 bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30">
-              <h3 class="text-sm font-medium text-slate-300 mb-4 flex items-center">
-                <svg class="w-4 h-4 mr-2 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                </svg>
-                Negative Keywords to Add (Stop Wasting Budget)
-              </h3>
-              <p class="text-xs text-slate-400 mb-4">
-                These search terms attract attorney-seekers who won't convert to a $49 self-serve product. Add them as negative keywords immediately.
-              </p>
-              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                @for (negKw of suggestionsData.negativeKeywordSuggestions; track negKw.keyword) {
-                  <div class="p-3 bg-slate-800/50 rounded-lg border border-red-500/30">
-                    <div class="flex items-center justify-between mb-2">
-                      <span class="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-400 font-medium">
-                        EXCLUDE
-                      </span>
-                      <span class="text-xs px-2 py-0.5 rounded border" [class]="getPriorityClass(negKw.priority)">
-                        {{ negKw.priority }}
-                      </span>
-                    </div>
-                    <p class="text-sm text-slate-100 font-medium mb-1">{{ negKw.keyword }}</p>
-                    <p class="text-xs text-slate-400">{{ negKw.rationale }}</p>
-                  </div>
-                }
-              </div>
-            </div>
-          }
-
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Keyword Suggestions -->
-            <div class="card">
-              <h3 class="text-sm font-medium text-slate-300 mb-4 flex items-center">
-                <svg class="w-4 h-4 mr-2 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                </svg>
-                Keyword Suggestions
-              </h3>
-              @if (suggestionsData.keywordSuggestions && suggestionsData.keywordSuggestions.length > 0) {
-                <div class="space-y-3">
-                  @for (suggestion of suggestionsData.keywordSuggestions; track suggestion.keyword) {
-                    <div class="p-3 bg-slate-700/30 rounded-lg border border-slate-700/50">
-                      <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs px-2 py-0.5 rounded font-medium" [class]="getActionClass(suggestion.action)">
-                          {{ suggestion.action | uppercase }}
-                        </span>
-                        <span class="text-xs px-2 py-0.5 rounded border" [class]="getPriorityClass(suggestion.priority)">
-                          {{ suggestion.priority }}
-                        </span>
-                      </div>
-                      <p class="text-sm text-slate-100 font-medium mb-1">{{ suggestion.keyword }}</p>
-                      <p class="text-xs text-slate-400">{{ suggestion.rationale }}</p>
-                    </div>
-                  }
-                </div>
-              } @else {
-                <p class="text-slate-500 text-sm text-center py-4">No keyword suggestions</p>
-              }
-            </div>
-
-            <!-- Ad Copy Suggestions -->
-            <div class="card">
-              <h3 class="text-sm font-medium text-slate-300 mb-4 flex items-center">
-                <svg class="w-4 h-4 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                Ad Copy Suggestions
-              </h3>
-              @if (suggestionsData.adCopySuggestions && suggestionsData.adCopySuggestions.length > 0) {
-                <div class="space-y-3">
-                  @for (suggestion of suggestionsData.adCopySuggestions; track suggestion.suggested) {
-                    <div class="p-3 bg-slate-700/30 rounded-lg border border-slate-700/50">
-                      <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-400">
-                          {{ suggestion.type }}
-                        </span>
-                        <span class="text-xs px-2 py-0.5 rounded border" [class]="getPriorityClass(suggestion.priority)">
-                          {{ suggestion.priority }}
-                        </span>
-                      </div>
-                      @if (suggestion.current) {
-                        <p class="text-xs text-slate-500 mb-1">Current: <span class="line-through">{{ suggestion.current }}</span></p>
-                      }
-                      <p class="text-sm text-green-400 font-medium mb-1">{{ suggestion.suggested }}</p>
-                      <p class="text-xs text-slate-400">{{ suggestion.rationale }}</p>
-                    </div>
-                  }
-                </div>
-              } @else {
-                <p class="text-slate-500 text-sm text-center py-4">No ad copy suggestions</p>
-              }
-            </div>
-
-            <!-- General Recommendations -->
-            <div class="card">
-              <h3 class="text-sm font-medium text-slate-300 mb-4 flex items-center">
-                <svg class="w-4 h-4 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                General Recommendations
-              </h3>
-              @if (suggestionsData.generalRecommendations && suggestionsData.generalRecommendations.length > 0) {
-                <div class="space-y-3">
-                  @for (rec of suggestionsData.generalRecommendations; track rec.recommendation) {
-                    <div class="p-3 bg-slate-700/30 rounded-lg border border-slate-700/50">
-                      <div class="flex items-center justify-between mb-2">
-                        <div class="flex items-center">
-                          <svg class="w-4 h-4 mr-1.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="getCategoryIcon(rec.category)" />
-                          </svg>
-                          <span class="text-xs text-slate-400 capitalize">{{ rec.category }}</span>
-                        </div>
-                        <span class="text-xs px-2 py-0.5 rounded border" [class]="getPriorityClass(rec.priority)">
-                          {{ rec.priority }}
-                        </span>
-                      </div>
-                      <p class="text-sm text-slate-100 mb-1">{{ rec.recommendation }}</p>
-                      <p class="text-xs text-green-400">Expected: {{ rec.expectedImpact }}</p>
-                    </div>
-                  }
-                </div>
-              } @else {
-                <p class="text-slate-500 text-sm text-center py-4">No recommendations</p>
-              }
-            </div>
+          <div class="card text-center">
+            <p class="text-xs text-slate-400 mb-1">Ad Spend</p>
+            <p class="text-xl font-bold text-slate-100">${{ suggestionsData.periodInsights.totalSpend | number:'1.2-2' }}</p>
           </div>
-
-          <!-- Generation Info -->
-          @if (suggestionsData.generatedAt) {
-            <p class="text-xs text-slate-500 text-center mt-4">
-              Generated {{ suggestionsData.generatedAt | date:'medium' }} for {{ suggestionsData.campaignAnalyzed }}
+          <div class="card text-center">
+            <p class="text-xs text-slate-400 mb-1">Revenue</p>
+            <p class="text-xl font-bold text-green-400">${{ suggestionsData.periodInsights.totalRevenue | number:'1.2-2' }}</p>
+          </div>
+          <div class="card text-center">
+            <p class="text-xs text-slate-400 mb-1">Net Position</p>
+            <p class="text-xl font-bold" [class]="getNetPositionClass()">
+              {{ suggestionsData.periodInsights.netPosition >= 0 ? '+' : '' }}${{ suggestionsData.periodInsights.netPosition | number:'1.2-2' }}
             </p>
-          }
+          </div>
+          <div class="card text-center">
+            <p class="text-xs text-slate-400 mb-1">ROAS</p>
+            <p class="text-xl font-bold" [class]="getRoasClass()">{{ suggestionsData.periodInsights.revenueToSpendRatio | number:'1.2-2' }}x</p>
+          </div>
+          <div class="card text-center">
+            <p class="text-xs text-slate-400 mb-1">Cost/Paid Conv</p>
+            <p class="text-xl font-bold" [class]="suggestionsData.periodInsights.costPerPaidConversion < 49 ? 'text-green-400' : 'text-amber-400'">
+              ${{ suggestionsData.periodInsights.costPerPaidConversion | number:'1.2-2' }}
+            </p>
+          </div>
+        </div>
+
+        @if (suggestionsData.periodInsights.dataQualityNote) {
+          <div class="card mb-6 bg-amber-500/10 border-amber-500/30">
+            <div class="flex items-start">
+              <svg class="w-5 h-5 text-amber-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <p class="text-sm font-medium text-amber-300 mb-1">Data Quality Note</p>
+                <p class="text-sm text-slate-300">{{ suggestionsData.periodInsights.dataQualityNote }}</p>
+              </div>
+            </div>
+          </div>
         }
-      </section>
+      }
+
+      <!-- Performance Summary -->
+      @if (suggestionsData.performanceSummary) {
+        <div class="card mb-6 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border-indigo-500/30">
+          <div class="flex items-start">
+            <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <p class="text-sm font-medium text-slate-200 mb-1">Performance Summary</p>
+              <p class="text-sm text-slate-300">{{ suggestionsData.performanceSummary }}</p>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Negative Keywords Section (Priority) -->
+      @if (suggestionsData.negativeKeywordSuggestions && suggestionsData.negativeKeywordSuggestions.length > 0) {
+        <div class="card mb-6 bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30">
+          <h3 class="text-sm font-medium text-slate-300 mb-4 flex items-center">
+            <svg class="w-4 h-4 mr-2 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+            Negative Keywords to Add (Stop Wasting Budget)
+          </h3>
+          <p class="text-xs text-slate-400 mb-4">
+            These search terms attract attorney-seekers who won't convert to a $49 self-serve product. Add them as negative keywords immediately.
+          </p>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            @for (negKw of suggestionsData.negativeKeywordSuggestions; track negKw.keyword) {
+              <div class="p-3 bg-slate-800/50 rounded-lg border border-red-500/30">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-400 font-medium">
+                    EXCLUDE
+                  </span>
+                  <span class="text-xs px-2 py-0.5 rounded border" [class]="getPriorityClass(negKw.priority)">
+                    {{ negKw.priority }}
+                  </span>
+                </div>
+                <p class="text-sm text-slate-100 font-medium mb-1">{{ negKw.keyword }}</p>
+                <p class="text-xs text-slate-400">{{ negKw.rationale }}</p>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Keyword Suggestions -->
+        <div class="card">
+          <h3 class="text-sm font-medium text-slate-300 mb-4 flex items-center">
+            <svg class="w-4 h-4 mr-2 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+            </svg>
+            Keyword Suggestions
+          </h3>
+          @if (suggestionsData.keywordSuggestions && suggestionsData.keywordSuggestions.length > 0) {
+            <div class="space-y-3">
+              @for (suggestion of suggestionsData.keywordSuggestions; track suggestion.keyword) {
+                <div class="p-3 bg-slate-700/30 rounded-lg border border-slate-700/50">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs px-2 py-0.5 rounded font-medium" [class]="getActionClass(suggestion.action)">
+                      {{ suggestion.action | uppercase }}
+                    </span>
+                    <span class="text-xs px-2 py-0.5 rounded border" [class]="getPriorityClass(suggestion.priority)">
+                      {{ suggestion.priority }}
+                    </span>
+                  </div>
+                  <p class="text-sm text-slate-100 font-medium mb-1">{{ suggestion.keyword }}</p>
+                  <p class="text-xs text-slate-400">{{ suggestion.rationale }}</p>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="text-slate-500 text-sm text-center py-4">No keyword suggestions</p>
+          }
+        </div>
+
+        <!-- Ad Copy Suggestions -->
+        <div class="card">
+          <h3 class="text-sm font-medium text-slate-300 mb-4 flex items-center">
+            <svg class="w-4 h-4 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            Ad Copy Suggestions
+          </h3>
+          @if (suggestionsData.adCopySuggestions && suggestionsData.adCopySuggestions.length > 0) {
+            <div class="space-y-3">
+              @for (suggestion of suggestionsData.adCopySuggestions; track suggestion.suggested) {
+                <div class="p-3 bg-slate-700/30 rounded-lg border border-slate-700/50">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-400">
+                      {{ suggestion.type }}
+                    </span>
+                    <span class="text-xs px-2 py-0.5 rounded border" [class]="getPriorityClass(suggestion.priority)">
+                      {{ suggestion.priority }}
+                    </span>
+                  </div>
+                  @if (suggestion.current) {
+                    <p class="text-xs text-slate-500 mb-1">Current: <span class="line-through">{{ suggestion.current }}</span></p>
+                  }
+                  <p class="text-sm text-green-400 font-medium mb-1">{{ suggestion.suggested }}</p>
+                  <p class="text-xs text-slate-400">{{ suggestion.rationale }}</p>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="text-slate-500 text-sm text-center py-4">No ad copy suggestions</p>
+          }
+        </div>
+
+        <!-- General Recommendations -->
+        <div class="card">
+          <h3 class="text-sm font-medium text-slate-300 mb-4 flex items-center">
+            <svg class="w-4 h-4 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            General Recommendations
+          </h3>
+          @if (suggestionsData.generalRecommendations && suggestionsData.generalRecommendations.length > 0) {
+            <div class="space-y-3">
+              @for (rec of suggestionsData.generalRecommendations; track rec.recommendation) {
+                <div class="p-3 bg-slate-700/30 rounded-lg border border-slate-700/50">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center">
+                      <svg class="w-4 h-4 mr-1.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="getCategoryIcon(rec.category)" />
+                      </svg>
+                      <span class="text-xs text-slate-400 capitalize">{{ rec.category }}</span>
+                    </div>
+                    <span class="text-xs px-2 py-0.5 rounded border" [class]="getPriorityClass(rec.priority)">
+                      {{ rec.priority }}
+                    </span>
+                  </div>
+                  <p class="text-sm text-slate-100 mb-1">{{ rec.recommendation }}</p>
+                  <p class="text-xs text-green-400">Expected: {{ rec.expectedImpact }}</p>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="text-slate-500 text-sm text-center py-4">No recommendations</p>
+          }
+        </div>
+      </div>
+
+      <!-- Keyword Opportunities Section (Google-Validated) -->
+      @if (suggestionsData.keywordOpportunities && suggestionsData.keywordOpportunities.length > 0) {
+        <div class="card mt-6 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border-emerald-500/30">
+          <h3 class="text-sm font-medium text-slate-300 mb-4 flex items-center">
+            <svg class="w-4 h-4 mr-2 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+            Keyword Opportunities (Validated with Google Data)
+          </h3>
+          <p class="text-xs text-slate-400 mb-4">
+            Keywords validated against Google Ads Historical Metrics API for real search volume and competition data.
+          </p>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-slate-400 text-left border-b border-slate-700">
+                  <th class="pb-2 font-medium">Keyword</th>
+                  <th class="pb-2 font-medium text-center">Match</th>
+                  <th class="pb-2 font-medium text-center">Intent</th>
+                  <th class="pb-2 font-medium text-right">CPC Paid</th>
+                  <th class="pb-2 font-medium text-center">Source</th>
+                  <th class="pb-2 font-medium text-center">Priority</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (opp of suggestionsData.keywordOpportunities; track opp.keyword) {
+                  <tr class="border-t border-slate-700/50 hover:bg-slate-700/20">
+                    <td class="py-2 text-slate-100 max-w-[250px]">
+                      <span class="font-medium">{{ opp.keyword }}</span>
+                      <p class="text-xs text-slate-500 mt-0.5 truncate" [title]="opp.evidence">{{ opp.evidence }}</p>
+                      <p class="text-xs text-slate-400 mt-0.5 truncate">{{ opp.rationale }}</p>
+                    </td>
+                    <td class="py-2 text-center">
+                      <span class="px-1.5 py-0.5 rounded text-xs"
+                        [class]="opp.matchType === 'EXACT' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'">
+                        {{ opp.matchType }}
+                      </span>
+                    </td>
+                    <td class="py-2 text-center">
+                      <span class="px-1.5 py-0.5 rounded text-xs"
+                        [class]="opp.intentScore === 'high' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'">
+                        {{ opp.intentScore }}
+                      </span>
+                    </td>
+                    <td class="py-2 text-right text-slate-300">
+                      @if (opp.actualCpcPaid !== null && opp.actualCpcPaid !== undefined) {
+                        ${{ opp.actualCpcPaid | number:'1.2-2' }}
+                      } @else {
+                        <span class="text-slate-500">N/A</span>
+                      }
+                    </td>
+                    <td class="py-2 text-center">
+                      <span class="px-1.5 py-0.5 rounded text-xs"
+                        [class]="opp.source === 'confirmed_gap' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'">
+                        @switch (opp.source) {
+                          @case ('confirmed_gap') { Confirmed }
+                          @case ('claude_hypothesis') { Hypothesis }
+                        }
+                      </span>
+                    </td>
+                    <td class="py-2 text-center">
+                      <span class="text-xs px-2 py-0.5 rounded border" [class]="getPriorityClass(opp.priority)">
+                        {{ opp.priority }}
+                      </span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </div>
+      }
+
+      <!-- Search Terms Analysis Stats -->
+      @if (suggestionsData.searchTermsAnalysis) {
+        <div class="card mt-4 bg-slate-800/50 border-slate-700">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
+            <span class="text-slate-400 font-medium">Search Term Analysis:</span>
+            <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span>
+                <span class="text-slate-500">Terms Analyzed:</span>
+                <span class="ml-1 text-slate-300">{{ suggestionsData.searchTermsAnalysis.totalSearchTerms }}</span>
+              </span>
+              <span>
+                <span class="text-slate-500">Gaps Found:</span>
+                <span class="ml-1 text-emerald-400">{{ suggestionsData.searchTermsAnalysis.confirmedGaps }}</span>
+              </span>
+              <span>
+                <span class="text-slate-500">Waste Found:</span>
+                <span class="ml-1 text-red-400">{{ suggestionsData.searchTermsAnalysis.confirmedWaste }}</span>
+              </span>
+              <span>
+                <span class="text-slate-500">$ Wasted:</span>
+                <span class="ml-1 text-red-400">${{ suggestionsData.searchTermsAnalysis.totalWastedOnWrongIntent | number:'1.2-2' }}</span>
+              </span>
+              <span>
+                <span class="text-slate-500">Already Negated:</span>
+                <span class="ml-1 text-green-400">{{ suggestionsData.searchTermsAnalysis.alreadyNegated }}</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Negative Keyword Audit -->
+      @if (suggestionsData.negativeKeywordAudit) {
+        <div class="card mt-4 bg-slate-800/50 border-slate-700">
+          <div class="flex items-center justify-between mb-3">
+            <h4 class="text-sm font-medium text-slate-200">Negative Keyword Coverage</h4>
+            <span class="text-xs px-2 py-1 rounded bg-slate-700 text-slate-300">
+              {{ suggestionsData.negativeKeywordAudit.coverageScore }}
+            </span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <!-- Existing Negatives -->
+            <div>
+              <span class="text-slate-400 font-medium">Existing Negatives:</span>
+              <span class="ml-1 text-slate-300">{{ suggestionsData.negativeKeywordAudit.existingNegatives.length }}</span>
+              @if (suggestionsData.negativeKeywordAudit.existingNegatives.length > 0) {
+                <div class="mt-2 max-h-24 overflow-y-auto">
+                  @for (neg of suggestionsData.negativeKeywordAudit.existingNegatives.slice(0, 10); track neg.keyword) {
+                    <div class="text-slate-500 truncate" [title]="neg.keyword">
+                      <span class="text-slate-400">{{ neg.keyword }}</span>
+                      <span class="ml-1 text-slate-600">({{ neg.scope }})</span>
+                    </div>
+                  }
+                  @if (suggestionsData.negativeKeywordAudit.existingNegatives.length > 10) {
+                    <div class="text-slate-600">+{{ suggestionsData.negativeKeywordAudit.existingNegatives.length - 10 }} more</div>
+                  }
+                </div>
+              }
+            </div>
+            <!-- Already Covered -->
+            <div>
+              <span class="text-slate-400 font-medium">Already Covered:</span>
+              <span class="ml-1 text-green-400">{{ suggestionsData.negativeKeywordAudit.alreadyCovered.length }}</span>
+              @if (suggestionsData.negativeKeywordAudit.alreadyCovered.length > 0) {
+                <div class="mt-2 max-h-24 overflow-y-auto">
+                  @for (ac of suggestionsData.negativeKeywordAudit.alreadyCovered.slice(0, 5); track ac.keyword) {
+                    <div class="text-slate-500 truncate" [title]="ac.keyword">
+                      <span class="text-green-400">{{ ac.keyword }}</span>
+                      <span class="ml-1 text-slate-600">(${{ ac.wastedSpend | number:'1.2-2' }})</span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+            <!-- Gaps (New to add) -->
+            <div>
+              <span class="text-slate-400 font-medium">Gaps to Add:</span>
+              <span class="ml-1 text-red-400">{{ suggestionsData.negativeKeywordAudit.gaps.length }}</span>
+              @if (suggestionsData.negativeKeywordAudit.gaps.length > 0) {
+                <div class="mt-2 max-h-24 overflow-y-auto">
+                  @for (gap of suggestionsData.negativeKeywordAudit.gaps.slice(0, 5); track gap.keyword) {
+                    <div class="text-slate-500 truncate" [title]="gap.keyword">
+                      <span class="text-red-400">{{ gap.keyword }}</span>
+                      <span class="ml-1 px-1 rounded text-slate-600"
+                        [class]="gap.priority === 'high' ? 'bg-red-500/20' : gap.priority === 'medium' ? 'bg-amber-500/20' : 'bg-slate-500/20'">
+                        {{ gap.priority }}
+                      </span>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Generation Info -->
+      @if (suggestionsData.generatedAt) {
+        <p class="text-xs text-slate-500 text-center mt-4">
+          Generated {{ suggestionsData.generatedAt | date:'medium' }}
+          @if (suggestionsData.dateRange) {
+            for {{ suggestionsData.dateRange.startDate }} to {{ suggestionsData.dateRange.endDate }} ({{ suggestionsData.dateRange.daysAnalyzed }} days)
+          }
+        </p>
+      }
     }
-  }
+  </section>
 </div>
