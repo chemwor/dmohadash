@@ -1,0 +1,1165 @@
+<!-- Header -->
+<header class="bg-slate-800 border-b border-slate-700 sticky top-14 lg:top-0 z-10">
+  <div class="px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-14 md:h-16">
+      <div class="flex items-center min-w-0">
+        <span class="text-xs md:text-sm text-slate-400 truncate">Operations Dashboard</span>
+      </div>
+
+      <div class="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
+        <div class="text-right hidden sm:block">
+          <p class="text-sm font-medium text-slate-100">{{ currentDate }}</p>
+          <p class="text-xs text-slate-400">{{ currentTime }}</p>
+        </div>
+
+        <button
+          (click)="refreshAll()"
+          [disabled]="isRefreshing"
+          class="btn-secondary flex items-center"
+        >
+          <svg
+            class="w-4 h-4 md:mr-2"
+            [class.animate-spin]="isRefreshing"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span class="hidden md:inline">{{ isRefreshing ? 'Refreshing...' : 'Refresh' }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Controls -->
+<div class="px-4 sm:px-6 lg:px-8 py-3 md:py-4">
+  <div class="flex flex-wrap items-center justify-between gap-3 md:gap-4">
+    <div class="flex items-center space-x-2 overflow-x-auto">
+      <span class="text-xs md:text-sm text-slate-400 flex-shrink-0">Period:</span>
+      <div class="flex bg-slate-800 rounded-lg p-0.5 md:p-1">
+        @for (period of periods; track period.value) {
+          <button
+            (click)="setPeriod(period.value)"
+            [class]="selectedPeriod === period.value
+              ? 'px-2 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium rounded-md bg-indigo-500 text-white whitespace-nowrap'
+              : 'px-2 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium rounded-md text-slate-400 hover:text-slate-100 whitespace-nowrap'"
+          >
+            {{ period.label }}
+          </button>
+        }
+      </div>
+    </div>
+
+    @if (lastRefreshed) {
+      <span class="text-xs text-slate-500">
+        Last updated: {{ lastRefreshed | date:'shortTime' }}
+      </span>
+    }
+  </div>
+</div>
+
+<!-- Dashboard Content -->
+<main class="px-4 sm:px-6 lg:px-8 pb-8 md:pb-12">
+  <!-- Row 1: Key Business Metrics -->
+  <section class="mb-8">
+    <h2 class="section-header">Key Business Metrics</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <app-metric-card
+        title="Revenue"
+        [value]="stripeData?.revenue || 0"
+        prefix="$"
+        [subtitle]="selectedPeriod === 'today' ? 'Today' : selectedPeriod === 'week' ? 'This Week' : 'This Month'"
+        [loading]="loadingStates.stripe"
+        [error]="errors.stripe"
+      ></app-metric-card>
+
+      <app-metric-card
+        title="Ad Spend"
+        [value]="googleAdsData?.dailySpend || 0"
+        prefix="$"
+        subtitle="Today"
+        [loading]="loadingStates.googleAds"
+        [error]="errors.googleAds"
+      ></app-metric-card>
+
+      <app-metric-card
+        title="CAC"
+        [value]="calculatedMetrics.cac"
+        prefix="$"
+        subtitle="Ad Spend / Purchases"
+        [loading]="loadingStates.googleAds || loadingStates.supabase"
+      ></app-metric-card>
+
+      <app-metric-card
+        title="ROAS"
+        [value]="calculatedMetrics.roas"
+        suffix="x"
+        subtitle="Revenue / Ad Spend"
+        [loading]="loadingStates.stripe || loadingStates.googleAds"
+        [trend]="calculatedMetrics.roas >= 1 ? 'up' : 'down'"
+      ></app-metric-card>
+    </div>
+  </section>
+
+  <!-- Row 2: Conversion Funnel -->
+  <section class="mb-8">
+    <h2 class="section-header">Conversion Funnel ({{ selectedPeriod === 'today' ? 'Today' : selectedPeriod === 'week' ? 'This Week' : 'This Month' }})</h2>
+    <div class="card">
+      @if (loadingStates.supabase) {
+        <div class="flex items-center justify-center py-8">
+          <div class="flex space-x-8">
+            @for (i of [1, 2, 3, 4]; track i) {
+              <div class="text-center">
+                <app-loading-skeleton height="48px" width="80px" class="mb-2"></app-loading-skeleton>
+                <app-loading-skeleton height="20px" width="60px"></app-loading-skeleton>
+              </div>
+            }
+          </div>
+        </div>
+      } @else if (errors.supabase) {
+        <div class="text-center py-8">
+          <p class="text-red-500 mb-2">{{ errors.supabase }}</p>
+          <button (click)="loadSupabaseData()" class="text-indigo-400 hover:text-indigo-300 underline text-sm">
+            Retry
+          </button>
+        </div>
+      } @else {
+        <!-- Mobile: vertical stack, Desktop: horizontal -->
+        <div class="flex flex-col md:flex-row items-center justify-between py-4 gap-2 md:gap-0">
+          <!-- Visitors -->
+          <div class="flex-shrink-0 text-center px-4">
+            <div class="w-20 h-20 md:w-24 md:h-24 mx-auto bg-slate-700 rounded-xl flex items-center justify-center mb-2">
+              <span class="text-xl md:text-2xl font-bold text-slate-100">{{ supabaseData?.funnel?.visitors || 0 }}</span>
+            </div>
+            <p class="text-xs md:text-sm font-medium text-slate-400">Visitors</p>
+          </div>
+
+          <!-- Arrow 1 -->
+          <div class="flex-shrink-0 flex flex-col items-center px-2">
+            <svg class="w-6 h-6 md:w-8 md:h-8 text-slate-600 rotate-90 md:rotate-0" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M13.172 12l-4.95-4.95 1.414-1.414L16 12l-6.364 6.364-1.414-1.414z"/>
+            </svg>
+            <span class="text-xs text-slate-500">{{ supabaseData?.funnel?.visitorToQuickPreviewRate || 0 }}%</span>
+          </div>
+
+          <!-- Quick Previews -->
+          <div class="flex-shrink-0 text-center px-4">
+            <div class="w-20 h-20 md:w-24 md:h-24 mx-auto bg-indigo-500/20 border-2 border-indigo-500/50 rounded-xl flex items-center justify-center mb-2">
+              <span class="text-xl md:text-2xl font-bold text-indigo-400">{{ supabaseData?.funnel?.quickPreviews || 0 }}</span>
+            </div>
+            <p class="text-xs md:text-sm font-medium text-slate-400">Quick Previews</p>
+          </div>
+
+          <!-- Arrow 2 -->
+          <div class="flex-shrink-0 flex flex-col items-center px-2">
+            <svg class="w-6 h-6 md:w-8 md:h-8 text-slate-600 rotate-90 md:rotate-0" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M13.172 12l-4.95-4.95 1.414-1.414L16 12l-6.364 6.364-1.414-1.414z"/>
+            </svg>
+            <span class="text-xs text-slate-500">{{ supabaseData?.funnel?.quickToFullPreviewRate || 0 }}%</span>
+          </div>
+
+          <!-- Full Previews -->
+          <div class="flex-shrink-0 text-center px-4">
+            <div class="w-20 h-20 md:w-24 md:h-24 mx-auto bg-indigo-500/30 border-2 border-indigo-500/70 rounded-xl flex items-center justify-center mb-2">
+              <span class="text-xl md:text-2xl font-bold text-indigo-300">{{ supabaseData?.funnel?.fullPreviews || 0 }}</span>
+            </div>
+            <p class="text-xs md:text-sm font-medium text-slate-400">Full Previews</p>
+          </div>
+
+          <!-- Arrow 3 -->
+          <div class="flex-shrink-0 flex flex-col items-center px-2">
+            <svg class="w-6 h-6 md:w-8 md:h-8 text-slate-600 rotate-90 md:rotate-0" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M13.172 12l-4.95-4.95 1.414-1.414L16 12l-6.364 6.364-1.414-1.414z"/>
+            </svg>
+            <span class="text-xs text-slate-500">{{ supabaseData?.funnel?.fullPreviewToPurchaseRate || 0 }}%</span>
+          </div>
+
+          <!-- Purchases -->
+          <div class="flex-shrink-0 text-center px-4">
+            <div class="w-20 h-20 md:w-24 md:h-24 mx-auto bg-green-500/20 border-2 border-green-500/50 rounded-xl flex items-center justify-center mb-2">
+              <span class="text-xl md:text-2xl font-bold text-green-400">{{ supabaseData?.funnel?.purchases || 0 }}</span>
+            </div>
+            <p class="text-xs md:text-sm font-medium text-slate-400">Purchases</p>
+          </div>
+        </div>
+
+        <div class="border-t border-slate-700 mt-4 pt-4 text-center">
+          <p class="text-sm text-slate-400">
+            Overall Conversion Rate:
+            <span class="font-bold text-slate-100 ml-1">{{ supabaseData?.funnel?.overallConversionRate || 0 }}%</span>
+          </p>
+        </div>
+      }
+    </div>
+  </section>
+
+  <!-- Row 3: Two Columns -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <!-- Email / Klaviyo -->
+    <section>
+      <h2 class="section-header">Email Collection (Klaviyo)</h2>
+      <div class="card">
+        @if (loadingStates.klaviyo) {
+          <div class="space-y-4">
+            @for (i of [1, 2, 3]; track i) {
+              <app-loading-skeleton height="24px"></app-loading-skeleton>
+            }
+          </div>
+        } @else if (errors.klaviyo) {
+          <div class="text-center py-4">
+            <p class="text-red-500 mb-2">{{ errors.klaviyo }}</p>
+            <button (click)="loadKlaviyoData()" class="text-indigo-400 hover:text-indigo-300 underline text-sm">
+              Retry
+            </button>
+          </div>
+        } @else if (klaviyoData?.isMockData) {
+          <!-- Not Configured State -->
+          <div class="text-center py-8">
+            <svg class="w-12 h-12 mx-auto text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <p class="text-slate-400 mb-2">Klaviyo not connected</p>
+            <p class="text-xs text-slate-500">Add KLAVIYO_API_KEY to see email data</p>
+          </div>
+        } @else {
+          <!-- Total Profiles (All Emails) -->
+          <div class="mb-4">
+            <div class="flex items-baseline justify-between">
+              <span class="text-3xl font-bold text-slate-100">{{ klaviyoData?.totalProfiles | number }}</span>
+              @if (klaviyoData && klaviyoData.emailsCollectedToday && klaviyoData.emailsCollectedToday > 0) {
+                <span class="text-sm text-green-500">+{{ klaviyoData.emailsCollectedToday }} today</span>
+              }
+            </div>
+            <p class="text-sm text-slate-400 mt-1">Total Emails (All Profiles)</p>
+          </div>
+
+          <!-- Emails in Flow -->
+          <div class="mb-4 p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-lg">
+            <div class="flex items-baseline justify-between">
+              <span class="text-sm text-slate-400">Emails in Abandonment Flow</span>
+              <span class="text-xl font-bold text-indigo-400">{{ klaviyoData?.totalEmailsInFlow | number }}</span>
+            </div>
+          </div>
+
+          <!-- List Breakdown -->
+          <div class="border-t border-slate-700 pt-4">
+            <h3 class="text-sm font-medium text-slate-300 mb-3">Flow Breakdown</h3>
+            <div class="space-y-3">
+              <div class="flex justify-between items-center p-3 bg-purple-500/10 rounded-lg">
+                <div>
+                  <p class="text-slate-100 font-medium">Full Preview Abandonment</p>
+                  <p class="text-xs text-slate-500">Completed full preview form</p>
+                </div>
+                <span class="text-xl font-bold text-purple-400">{{ klaviyoData?.fullPreviewEmails | number }}</span>
+              </div>
+              <div class="flex justify-between items-center p-3 bg-blue-500/10 rounded-lg">
+                <div>
+                  <p class="text-slate-100 font-medium">Quick Preview Abandonment</p>
+                  <p class="text-xs text-slate-500">Completed quick preview form</p>
+                </div>
+                <span class="text-xl font-bold text-blue-400">{{ klaviyoData?.quickPreviewEmails | number }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Flows -->
+          @if (klaviyoData && klaviyoData.flowStats && klaviyoData.flowStats.length > 0) {
+            <div class="border-t border-slate-700 mt-4 pt-4">
+              <h3 class="text-sm font-medium text-slate-300 mb-3">Flows ({{ klaviyoData.totalFlows }})</h3>
+              <div class="space-y-2">
+                @for (flow of klaviyoData!.flowStats; track flow.name) {
+                  <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-300 truncate mr-2">{{ flow.name }}</span>
+                    <span class="text-xs px-2 py-1 rounded-full"
+                      [class]="flow.status === 'live' ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'">
+                      {{ flow.status }}
+                    </span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </section>
+
+    <!-- Google Ads -->
+    <section>
+      <h2 class="section-header">Google Ads Performance</h2>
+      <div class="card">
+        @if (loadingStates.googleAds) {
+          <div class="space-y-4">
+            @for (i of [1, 2, 3]; track i) {
+              <app-loading-skeleton height="24px"></app-loading-skeleton>
+            }
+          </div>
+        } @else if (errors.googleAds) {
+          <div class="text-center py-4">
+            <p class="text-red-500 mb-2">{{ errors.googleAds }}</p>
+            <button (click)="loadGoogleAdsData()" class="text-indigo-400 hover:text-indigo-300 underline text-sm">
+              Retry
+            </button>
+          </div>
+        } @else if (googleAdsData?.isMockData) {
+          <!-- Not Configured State -->
+          <div class="text-center py-8">
+            <svg class="w-12 h-12 mx-auto text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            <p class="text-slate-400 mb-2">Google Ads not connected</p>
+            <p class="text-xs text-slate-500 max-w-xs mx-auto">
+              Add your Google Ads API credentials to see real campaign data.
+            </p>
+          </div>
+        } @else {
+          <!-- Daily Spend Progress -->
+          <div class="mb-6">
+            <div class="flex items-baseline justify-between mb-2">
+              <span class="text-sm text-slate-400">Daily Spend</span>
+              <span class="text-sm text-slate-400">
+                ${{ googleAdsData?.dailySpend | number:'1.2-2' }} / ${{ googleAdsData?.dailyBudget | number:'1.0-0' }}
+              </span>
+            </div>
+            <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+              <div
+                class="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                [style.width.%]="getSpendPercentage()"
+              ></div>
+            </div>
+          </div>
+
+          <!-- Stats Grid -->
+          <div class="grid grid-cols-3 gap-4 mb-6">
+            <div class="text-center">
+              <p class="text-2xl font-bold text-slate-100">{{ googleAdsData?.clicks | number }}</p>
+              <p class="text-xs text-slate-400">Clicks</p>
+            </div>
+            <div class="text-center">
+              <p class="text-2xl font-bold text-slate-100">{{ googleAdsData?.impressions | number }}</p>
+              <p class="text-xs text-slate-400">Impressions</p>
+            </div>
+            <div class="text-center">
+              <p class="text-2xl font-bold text-slate-100">${{ googleAdsData?.cpc | number:'1.2-2' }}</p>
+              <p class="text-xs text-slate-400">Avg CPC</p>
+            </div>
+          </div>
+
+          <!-- Campaign Breakdown -->
+          <div class="border-t border-slate-700 pt-4">
+            <h3 class="text-sm font-medium text-slate-300 mb-3">Campaign Breakdown</h3>
+            @if (googleAdsData && googleAdsData.campaigns && googleAdsData.campaigns.length > 0) {
+              <!-- Mobile Card Layout -->
+              <div class="lg:hidden space-y-2">
+                @for (campaign of googleAdsData!.campaigns; track campaign.name) {
+                  <div class="bg-slate-700/30 rounded-lg p-3 border border-slate-700/50">
+                    <p class="text-sm font-medium text-slate-100 truncate mb-2" [title]="campaign.name">{{ campaign.name }}</p>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                      <div>
+                        <p class="text-xs text-slate-400">Spend</p>
+                        <p class="text-sm font-medium text-slate-200">${{ campaign.spend | number:'1.2-2' }}</p>
+                      </div>
+                      <div>
+                        <p class="text-xs text-slate-400">Clicks</p>
+                        <p class="text-sm font-medium text-slate-200">{{ campaign.clicks | number }}</p>
+                      </div>
+                      <div>
+                        <p class="text-xs text-slate-400">CPC</p>
+                        <p class="text-sm font-medium text-slate-200">${{ campaign.cpc | number:'1.2-2' }}</p>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Desktop Table Layout -->
+              <div class="hidden lg:block overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="text-slate-400 text-left">
+                      <th class="pb-2 font-medium">Campaign</th>
+                      <th class="pb-2 font-medium text-right">Spend</th>
+                      <th class="pb-2 font-medium text-right">Clicks</th>
+                      <th class="pb-2 font-medium text-right">CPC</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (campaign of googleAdsData!.campaigns; track campaign.name) {
+                      <tr class="border-t border-slate-700">
+                        <td class="py-2 text-slate-100 max-w-[150px] truncate" [title]="campaign.name">
+                          {{ campaign.name }}
+                        </td>
+                        <td class="py-2 text-right text-slate-300">${{ campaign.spend | number:'1.2-2' }}</td>
+                        <td class="py-2 text-right text-slate-300">{{ campaign.clicks | number }}</td>
+                        <td class="py-2 text-right text-slate-300">${{ campaign.cpc | number:'1.2-2' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <p class="text-slate-500 text-sm">No campaign data available</p>
+            }
+          </div>
+        }
+      </div>
+    </section>
+  </div>
+
+  <!-- Row 4: Microsoft Clarity Analytics -->
+  <section class="mb-8">
+    <h2 class="section-header">Site Analytics (Microsoft Clarity)</h2>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Visits & Sessions -->
+      <div class="card">
+        <h3 class="text-sm font-medium text-slate-300 mb-4">Visits & Sessions (3 days)</h3>
+        @if (loadingStates.clarity) {
+          <div class="space-y-3">
+            @for (i of [1, 2, 3]; track i) {
+              <app-loading-skeleton height="24px"></app-loading-skeleton>
+            }
+          </div>
+        } @else if (errors.clarity) {
+          <div class="text-center py-4">
+            <p class="text-red-500 mb-2 text-sm">{{ errors.clarity }}</p>
+            <button (click)="loadClarityData(true)" class="text-indigo-400 hover:text-indigo-300 underline text-sm">
+              Retry
+            </button>
+          </div>
+        } @else {
+          <div class="space-y-4">
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Total Visits</span>
+              <span class="text-2xl font-bold text-slate-100">{{ clarityData?.totalVisits | number }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Unique Visitors</span>
+              <span class="text-xl font-semibold text-slate-100">{{ clarityData?.uniqueVisitors | number }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Sessions</span>
+              <span class="text-xl font-semibold text-slate-100">{{ clarityData?.totalSessions | number }}</span>
+            </div>
+            <div class="border-t border-slate-700 pt-3 mt-3">
+              <div class="flex justify-between items-center text-sm">
+                <span class="text-slate-400">Pages/Session</span>
+                <span class="text-slate-100">{{ clarityData?.pagesPerSession | number:'1.1-1' }}</span>
+              </div>
+              <div class="flex justify-between items-center text-sm mt-2">
+                <span class="text-slate-400">Avg Time on Page</span>
+                <span class="text-slate-100">{{ formatTime(clarityData?.avgTimeOnPage || 0) }}</span>
+              </div>
+              <div class="flex justify-between items-center text-sm mt-2">
+                <span class="text-slate-400">Bounce Rate</span>
+                <span class="text-slate-100">{{ clarityData?.bounceRate | number:'1.1-1' }}%</span>
+              </div>
+            </div>
+          </div>
+          @if (clarityData?.isMockData) {
+            <div class="mt-4 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <p class="text-xs text-amber-400">Mock data - add Clarity API credentials</p>
+            </div>
+          }
+        }
+      </div>
+
+      <!-- Frustration Signals -->
+      <div class="card">
+        <h3 class="text-sm font-medium text-slate-300 mb-4">Frustration Signals</h3>
+        @if (loadingStates.clarity) {
+          <div class="space-y-3">
+            @for (i of [1, 2, 3, 4]; track i) {
+              <app-loading-skeleton height="24px"></app-loading-skeleton>
+            }
+          </div>
+        } @else if (errors.clarity) {
+          <div class="text-center py-4">
+            <p class="text-red-500 mb-2 text-sm">{{ errors.clarity }}</p>
+          </div>
+        } @else {
+          <div class="space-y-3">
+            <div class="flex justify-between items-center p-3 bg-red-500/10 rounded-lg">
+              <div class="flex items-center">
+                <svg class="w-5 h-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                </svg>
+                <span class="text-slate-300">Rage Clicks</span>
+              </div>
+              <span class="text-xl font-bold text-red-400">{{ clarityData?.rageClicks | number }}</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-amber-500/10 rounded-lg">
+              <div class="flex items-center">
+                <svg class="w-5 h-5 text-amber-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+                <span class="text-slate-300">Dead Clicks</span>
+              </div>
+              <span class="text-xl font-bold text-amber-400">{{ clarityData?.deadClicks | number }}</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-slate-700/50 rounded-lg">
+              <div class="flex items-center">
+                <svg class="w-5 h-5 text-slate-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" />
+                </svg>
+                <span class="text-slate-300">Quick Backs</span>
+              </div>
+              <span class="text-xl font-bold text-slate-100">{{ clarityData?.quickBacks | number }}</span>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-slate-700/50 rounded-lg">
+              <div class="flex items-center">
+                <svg class="w-5 h-5 text-slate-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                </svg>
+                <span class="text-slate-300">Excessive Scroll</span>
+              </div>
+              <span class="text-xl font-bold text-slate-100">{{ clarityData?.excessiveScrolling | number }}</span>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Technical Issues -->
+      <div class="card">
+        <h3 class="text-sm font-medium text-slate-300 mb-4">Technical Issues</h3>
+        @if (loadingStates.clarity) {
+          <div class="space-y-3">
+            @for (i of [1, 2]; track i) {
+              <app-loading-skeleton height="24px"></app-loading-skeleton>
+            }
+          </div>
+        } @else if (errors.clarity) {
+          <div class="text-center py-4">
+            <p class="text-red-500 mb-2 text-sm">{{ errors.clarity }}</p>
+          </div>
+        } @else {
+          <div class="space-y-4">
+            <div class="flex justify-between items-center p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+              <div>
+                <p class="text-slate-300 font-medium">JavaScript Errors</p>
+                <p class="text-xs text-slate-500">Errors detected in sessions</p>
+              </div>
+              <span class="text-2xl font-bold text-red-400">{{ clarityData?.jsErrors | number }}</span>
+            </div>
+            <div class="flex justify-between items-center p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+              <div>
+                <p class="text-slate-300 font-medium">Slow Page Loads</p>
+                <p class="text-xs text-slate-500">Pages taking > 3s to load</p>
+              </div>
+              <span class="text-2xl font-bold text-amber-400">{{ clarityData?.slowPageLoads | number }}</span>
+            </div>
+            <div class="border-t border-slate-700 pt-4 mt-4">
+              <p class="text-sm text-slate-400 mb-2">Avg Scroll Depth</p>
+              <div class="h-3 bg-slate-700 rounded-full overflow-hidden">
+                <div
+                  class="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                  [style.width.%]="clarityData?.avgScrollDepth || 0"
+                ></div>
+              </div>
+              <p class="text-right text-sm text-slate-300 mt-1">{{ clarityData?.avgScrollDepth | number:'1.0-0' }}%</p>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Row 5: Site Speed (Lighthouse) -->
+  <section class="mb-8">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="section-header mb-0">Site Speed (Lighthouse)</h2>
+      @if (lighthouseData?.fromCache) {
+        <span class="text-xs text-slate-500">
+          Cached {{ lighthouseData?.cacheAge }}
+        </span>
+      }
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <!-- Category Scores -->
+      <div class="card lg:col-span-1">
+        <h3 class="text-sm font-medium text-slate-300 mb-4">Lighthouse Scores</h3>
+        @if (loadingStates.lighthouse) {
+          <div class="grid grid-cols-2 gap-4">
+            @for (i of [1, 2, 3, 4]; track i) {
+              <div class="flex flex-col items-center">
+                <app-loading-skeleton height="64px" width="64px" class="rounded-full mb-2"></app-loading-skeleton>
+                <app-loading-skeleton height="16px" width="60px"></app-loading-skeleton>
+              </div>
+            }
+          </div>
+        } @else if (errors.lighthouse) {
+          <div class="text-center py-4">
+            <p class="text-red-500 mb-2 text-sm">{{ errors.lighthouse }}</p>
+            <button (click)="loadLighthouseData(true)" class="text-indigo-400 hover:text-indigo-300 underline text-sm">
+              Retry
+            </button>
+          </div>
+        } @else {
+          <div class="grid grid-cols-2 gap-4">
+            <!-- Performance -->
+            <div class="flex flex-col items-center">
+              <div class="relative w-16 h-16 mb-2">
+                <svg class="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
+                  <path class="text-slate-700" stroke="currentColor" stroke-width="3" fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                  <path [class]="getScoreClass(lighthouseData?.performanceScore || 0)" stroke="currentColor" stroke-width="3" stroke-linecap="round" fill="none"
+                    [attr.stroke-dasharray]="(lighthouseData?.performanceScore || 0) + ', 100'"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <span [class]="'text-lg font-bold ' + getScoreClass(lighthouseData?.performanceScore || 0)">
+                    {{ lighthouseData?.performanceScore || 0 }}
+                  </span>
+                </div>
+              </div>
+              <p class="text-xs text-slate-400">Performance</p>
+            </div>
+
+            <!-- SEO -->
+            <div class="flex flex-col items-center">
+              <div class="relative w-16 h-16 mb-2">
+                <svg class="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
+                  <path class="text-slate-700" stroke="currentColor" stroke-width="3" fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                  <path [class]="getScoreClass(lighthouseData?.seoScore || 0)" stroke="currentColor" stroke-width="3" stroke-linecap="round" fill="none"
+                    [attr.stroke-dasharray]="(lighthouseData?.seoScore || 0) + ', 100'"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <span [class]="'text-lg font-bold ' + getScoreClass(lighthouseData?.seoScore || 0)">
+                    {{ lighthouseData?.seoScore || 0 }}
+                  </span>
+                </div>
+              </div>
+              <p class="text-xs text-slate-400">SEO</p>
+            </div>
+
+            <!-- Accessibility -->
+            <div class="flex flex-col items-center">
+              <div class="relative w-16 h-16 mb-2">
+                <svg class="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
+                  <path class="text-slate-700" stroke="currentColor" stroke-width="3" fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                  <path [class]="getScoreClass(lighthouseData?.accessibilityScore || 0)" stroke="currentColor" stroke-width="3" stroke-linecap="round" fill="none"
+                    [attr.stroke-dasharray]="(lighthouseData?.accessibilityScore || 0) + ', 100'"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <span [class]="'text-lg font-bold ' + getScoreClass(lighthouseData?.accessibilityScore || 0)">
+                    {{ lighthouseData?.accessibilityScore || 0 }}
+                  </span>
+                </div>
+              </div>
+              <p class="text-xs text-slate-400">Accessibility</p>
+            </div>
+
+            <!-- Best Practices -->
+            <div class="flex flex-col items-center">
+              <div class="relative w-16 h-16 mb-2">
+                <svg class="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
+                  <path class="text-slate-700" stroke="currentColor" stroke-width="3" fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                  <path [class]="getScoreClass(lighthouseData?.bestPracticesScore || 0)" stroke="currentColor" stroke-width="3" stroke-linecap="round" fill="none"
+                    [attr.stroke-dasharray]="(lighthouseData?.bestPracticesScore || 0) + ', 100'"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <span [class]="'text-lg font-bold ' + getScoreClass(lighthouseData?.bestPracticesScore || 0)">
+                    {{ lighthouseData?.bestPracticesScore || 0 }}
+                  </span>
+                </div>
+              </div>
+              <p class="text-xs text-slate-400">Best Practices</p>
+            </div>
+          </div>
+
+          <!-- Metadata -->
+          <div class="border-t border-slate-700 mt-4 pt-3 text-center">
+            @if (lighthouseData?.lastTested) {
+              <p class="text-xs text-slate-500">
+                Tested: {{ lighthouseData?.lastTested | date:'short' }}
+              </p>
+            }
+            @if (lighthouseData?.message) {
+              <p class="text-xs text-amber-400 mt-1">{{ lighthouseData?.message }}</p>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Core Web Vitals -->
+      <div class="card lg:col-span-3">
+        <h3 class="text-sm font-medium text-slate-300 mb-4">Core Web Vitals</h3>
+        @if (loadingStates.lighthouse) {
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+              <app-loading-skeleton height="80px"></app-loading-skeleton>
+            }
+          </div>
+        } @else if (errors.lighthouse) {
+          <div class="text-center py-8">
+            <p class="text-slate-500">Unable to load metrics</p>
+          </div>
+        } @else {
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <!-- FCP -->
+            <div [class]="'p-4 rounded-lg border ' + getScoreBgClass(lighthouseData?.fcp?.score || 0)">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs text-slate-400">First Contentful Paint</span>
+                <span [class]="'text-xs font-medium ' + getScoreClass(lighthouseData?.fcp?.score || 0)">
+                  {{ lighthouseData?.fcp?.score || 0 }}
+                </span>
+              </div>
+              <p class="text-xl font-bold text-slate-100">{{ lighthouseData?.fcp?.displayValue || 'N/A' }}</p>
+            </div>
+
+            <!-- LCP -->
+            <div [class]="'p-4 rounded-lg border ' + getScoreBgClass(lighthouseData?.lcp?.score || 0)">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs text-slate-400">Largest Contentful Paint</span>
+                <span [class]="'text-xs font-medium ' + getScoreClass(lighthouseData?.lcp?.score || 0)">
+                  {{ lighthouseData?.lcp?.score || 0 }}
+                </span>
+              </div>
+              <p class="text-xl font-bold text-slate-100">{{ lighthouseData?.lcp?.displayValue || 'N/A' }}</p>
+            </div>
+
+            <!-- TBT -->
+            <div [class]="'p-4 rounded-lg border ' + getScoreBgClass(lighthouseData?.tbt?.score || 0)">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs text-slate-400">Total Blocking Time</span>
+                <span [class]="'text-xs font-medium ' + getScoreClass(lighthouseData?.tbt?.score || 0)">
+                  {{ lighthouseData?.tbt?.score || 0 }}
+                </span>
+              </div>
+              <p class="text-xl font-bold text-slate-100">{{ lighthouseData?.tbt?.displayValue || 'N/A' }}</p>
+            </div>
+
+            <!-- CLS -->
+            <div [class]="'p-4 rounded-lg border ' + getScoreBgClass(lighthouseData?.cls?.score || 0)">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs text-slate-400">Cumulative Layout Shift</span>
+                <span [class]="'text-xs font-medium ' + getScoreClass(lighthouseData?.cls?.score || 0)">
+                  {{ lighthouseData?.cls?.score || 0 }}
+                </span>
+              </div>
+              <p class="text-xl font-bold text-slate-100">{{ lighthouseData?.cls?.displayValue || 'N/A' }}</p>
+            </div>
+
+            <!-- Speed Index -->
+            <div [class]="'p-4 rounded-lg border ' + getScoreBgClass(lighthouseData?.speedIndex?.score || 0)">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs text-slate-400">Speed Index</span>
+                <span [class]="'text-xs font-medium ' + getScoreClass(lighthouseData?.speedIndex?.score || 0)">
+                  {{ lighthouseData?.speedIndex?.score || 0 }}
+                </span>
+              </div>
+              <p class="text-xl font-bold text-slate-100">{{ lighthouseData?.speedIndex?.displayValue || 'N/A' }}</p>
+            </div>
+
+            <!-- TTI -->
+            <div [class]="'p-4 rounded-lg border ' + getScoreBgClass(lighthouseData?.tti?.score || 0)">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs text-slate-400">Time to Interactive</span>
+                <span [class]="'text-xs font-medium ' + getScoreClass(lighthouseData?.tti?.score || 0)">
+                  {{ lighthouseData?.tti?.score || 0 }}
+                </span>
+              </div>
+              <p class="text-xl font-bold text-slate-100">{{ lighthouseData?.tti?.displayValue || 'N/A' }}</p>
+            </div>
+          </div>
+
+          <!-- Legend -->
+          <div class="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-slate-700">
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 rounded-full bg-green-500"></div>
+              <span class="text-xs text-slate-400">Good (90-100)</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+              <span class="text-xs text-slate-400">Needs Work (50-89)</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 rounded-full bg-red-500"></div>
+              <span class="text-xs text-slate-400">Poor (0-49)</span>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Row 6: API Cost Tracker (OpenAI) -->
+  <section class="mb-8">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="section-header mb-0">API Cost Tracker (OpenAI)</h2>
+      @if (openaiUsageData?.dailySpendAlert) {
+        <span class="px-3 py-1 bg-red-500/20 border border-red-500/50 rounded-full text-red-400 text-sm font-medium animate-pulse">
+          Daily Spend Alert!
+        </span>
+      }
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <!-- Cost Summary -->
+      <div class="card">
+        <h3 class="text-sm font-medium text-slate-300 mb-4">Cost Summary (30 days)</h3>
+        @if (loadingStates.openai) {
+          <div class="space-y-4">
+            @for (i of [1, 2, 3, 4]; track i) {
+              <app-loading-skeleton height="24px"></app-loading-skeleton>
+            }
+          </div>
+        } @else if (errors.openai) {
+          <div class="text-center py-4">
+            <p class="text-red-500 mb-2 text-sm">{{ errors.openai }}</p>
+            <button (click)="loadOpenAIUsageData(true)" class="text-indigo-400 hover:text-indigo-300 underline text-sm">
+              Retry
+            </button>
+          </div>
+        } @else if (openaiUsageData?.isMockData) {
+          <div class="text-center py-8">
+            <svg class="w-12 h-12 mx-auto text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+            </svg>
+            <p class="text-slate-400 mb-2">OpenAI not connected</p>
+            <p class="text-xs text-slate-500">Add OPENAI_API_KEY to track costs</p>
+          </div>
+        } @else {
+          <div class="space-y-4">
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Total Spend</span>
+              <span class="text-2xl font-bold text-slate-100">${{ openaiUsageData?.totalCost | number:'1.2-2' }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Today's Spend</span>
+              <span class="text-xl font-semibold" [class]="openaiUsageData?.dailySpendAlert ? 'text-red-400' : 'text-slate-100'">
+                ${{ openaiUsageData?.todayCost | number:'1.2-2' }}
+              </span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Total Requests</span>
+              <span class="text-xl font-semibold text-slate-100">{{ openaiUsageData?.totalRequests | number }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Avg Cost/Request</span>
+              <span class="text-lg text-slate-100">${{ openaiUsageData?.avgCostPerRequest | number:'1.4-4' }}</span>
+            </div>
+            <!-- Budget Tracking -->
+            @if (openaiUsageData?.budgetLimit) {
+              <div class="border-t border-slate-700 pt-3 mt-3">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-slate-400">Monthly Budget</span>
+                  <span class="text-lg text-slate-100">${{ openaiUsageData?.budgetLimit?.monthlyLimit | number:'1.0-0' }}</span>
+                </div>
+                <div class="relative h-2 bg-slate-700 rounded-full overflow-hidden mb-1">
+                  <div
+                    class="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
+                    [class]="(openaiUsageData?.budgetLimit?.percentUsed || 0) < 70 ? 'bg-green-500' : (openaiUsageData?.budgetLimit?.percentUsed || 0) < 90 ? 'bg-yellow-500' : 'bg-red-500'"
+                    [style.width.%]="openaiUsageData?.budgetLimit?.percentUsed || 0"
+                  ></div>
+                </div>
+                <div class="flex justify-between text-xs">
+                  <span class="text-slate-500">{{ openaiUsageData?.budgetLimit?.percentUsed || 0 }}% used</span>
+                  <span class="text-green-400">${{ openaiUsageData?.budgetLimit?.remaining | number:'1.2-2' }} remaining</span>
+                </div>
+              </div>
+            }
+          </div>
+          @if (openaiUsageData?.dailySpendAlert) {
+            <div class="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+              <p class="text-sm text-red-400">
+                Today's spend exceeds ${{ openaiUsageData?.dailySpendThreshold }} threshold
+              </p>
+            </div>
+          }
+        }
+      </div>
+
+      <!-- Profitability Analysis -->
+      <div class="card">
+        <h3 class="text-sm font-medium text-slate-300 mb-4">Profitability Analysis</h3>
+        @if (loadingStates.openai) {
+          <div class="space-y-4">
+            @for (i of [1, 2, 3]; track i) {
+              <app-loading-skeleton height="32px"></app-loading-skeleton>
+            }
+          </div>
+        } @else if (!openaiUsageData?.isMockData && !errors.openai) {
+          <div class="space-y-4">
+            <!-- Price vs Cost -->
+            <div class="p-4 bg-slate-700/50 rounded-lg">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-slate-400">Price per Purchase</span>
+                <span class="text-xl font-bold text-green-400">${{ openaiUsageData?.pricePerPurchase }}</span>
+              </div>
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-slate-400">API Cost per Purchase</span>
+                <span class="text-xl font-bold text-amber-400">${{ openaiUsageData?.costPerPurchase | number:'1.2-2' }}</span>
+              </div>
+              <div class="border-t border-slate-600 pt-2 mt-2">
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-300 font-medium">Profit per Purchase</span>
+                  <span class="text-xl font-bold" [class]="(openaiUsageData?.profitPerPurchase || 0) >= 0 ? 'text-green-400' : 'text-red-400'">
+                    ${{ openaiUsageData?.profitPerPurchase | number:'1.2-2' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Profit Margin Gauge -->
+            <div class="text-center">
+              <p class="text-sm text-slate-400 mb-2">Profit Margin</p>
+              <div class="relative h-4 bg-slate-700 rounded-full overflow-hidden">
+                <div
+                  class="absolute left-0 top-0 h-full rounded-full transition-all duration-500"
+                  [class]="(openaiUsageData?.profitMargin || 0) >= 70 ? 'bg-green-500' : (openaiUsageData?.profitMargin || 0) >= 50 ? 'bg-yellow-500' : 'bg-red-500'"
+                  [style.width.%]="openaiUsageData?.profitMargin || 0"
+                ></div>
+              </div>
+              <p class="text-2xl font-bold mt-2" [class]="(openaiUsageData?.profitMargin || 0) >= 70 ? 'text-green-400' : (openaiUsageData?.profitMargin || 0) >= 50 ? 'text-yellow-400' : 'text-red-400'">
+                {{ openaiUsageData?.profitMargin | number:'1.1-1' }}%
+              </p>
+            </div>
+
+            <div class="text-center text-xs text-slate-500">
+              Based on {{ openaiUsageData?.purchaseCount }} purchases in last 30 days
+            </div>
+          </div>
+        } @else {
+          <div class="flex items-center justify-center h-32 text-slate-500">
+            No data available
+          </div>
+        }
+      </div>
+
+      <!-- Daily Spend Chart -->
+      <div class="card">
+        <h3 class="text-sm font-medium text-slate-300 mb-4">Daily Spend (Last 7 Days)</h3>
+        @if (loadingStates.openai) {
+          <div class="space-y-2">
+            @for (i of [1, 2, 3, 4, 5, 6, 7]; track i) {
+              <app-loading-skeleton height="24px"></app-loading-skeleton>
+            }
+          </div>
+        } @else if (!openaiUsageData?.isMockData && !errors.openai && openaiUsageData?.dailyData?.length) {
+          <div class="space-y-2">
+            @for (day of openaiUsageData?.dailyData; track day.date) {
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-slate-500 w-16">{{ day.date | date:'EEE' }}</span>
+                <div class="flex-1 h-6 bg-slate-700 rounded overflow-hidden relative">
+                  @if ((openaiUsageData?.totalCost || 0) > 0) {
+                    <div
+                      class="h-full bg-indigo-500 rounded transition-all duration-300"
+                      [style.width.%]="(day.cost / (openaiUsageData?.totalCost || 1)) * 100 * 7"
+                    ></div>
+                  }
+                  <span class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-300">
+                    ${{ day.cost | number:'1.2-2' }}
+                  </span>
+                </div>
+              </div>
+            }
+          </div>
+          <div class="mt-4 pt-3 border-t border-slate-700 grid grid-cols-2 gap-4 text-center">
+            <div>
+              <p class="text-xs text-slate-400">Input Tokens</p>
+              <p class="text-sm font-medium text-slate-100">{{ openaiUsageData?.totalInputTokens | number }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-slate-400">Output Tokens</p>
+              <p class="text-sm font-medium text-slate-100">{{ openaiUsageData?.totalOutputTokens | number }}</p>
+            </div>
+          </div>
+        } @else {
+          <div class="flex items-center justify-center h-32 text-slate-500">
+            No usage data available
+          </div>
+        }
+      </div>
+    </div>
+
+    @if (openaiUsageData?.message && !openaiUsageData?.isMockData) {
+      <div class="mt-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+        <p class="text-sm text-amber-400">{{ openaiUsageData?.message }}</p>
+      </div>
+    }
+  </section>
+
+  <!-- Row 7: Recent Transactions -->
+  <section>
+    <h2 class="section-header">Recent Stripe Transactions</h2>
+    <div class="card overflow-hidden">
+      @if (loadingStates.stripe) {
+        <div class="space-y-3">
+          @for (i of [1, 2, 3, 4, 5]; track i) {
+            <app-loading-skeleton height="40px"></app-loading-skeleton>
+          }
+        </div>
+      } @else if (errors.stripe) {
+        <div class="text-center py-4">
+          <p class="text-red-500 mb-2">{{ errors.stripe }}</p>
+          <button (click)="loadStripeData()" class="text-indigo-400 hover:text-indigo-300 underline text-sm">
+            Retry
+          </button>
+        </div>
+      } @else if (stripeData && stripeData.recentTransactions && stripeData.recentTransactions.length > 0) {
+        <!-- Mobile Card Layout -->
+        <div class="lg:hidden space-y-3">
+          @for (tx of stripeData!.recentTransactions; track tx.id) {
+            <div class="bg-slate-700/30 rounded-lg p-3 border border-slate-700/50">
+              <div class="flex items-start justify-between mb-2">
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium text-slate-100 truncate">{{ tx.name || 'N/A' }}</p>
+                  @if (tx.email) {
+                    <p class="text-xs text-slate-500 truncate">{{ tx.email }}</p>
+                  }
+                </div>
+                <span class="text-green-400 font-bold ml-2">${{ tx.amount | number:'1.2-2' }}</span>
+              </div>
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-slate-400">{{ tx.created | date:'short' }}</span>
+                <span class="text-slate-300 truncate ml-2">{{ tx.description }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Desktop Table Layout -->
+        <div class="hidden lg:block overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-slate-400 text-left border-b border-slate-700">
+                <th class="pb-3 font-medium">Date</th>
+                <th class="pb-3 font-medium">Customer</th>
+                <th class="pb-3 font-medium">Description</th>
+                <th class="pb-3 font-medium text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (tx of stripeData!.recentTransactions; track tx.id) {
+                <tr class="border-t border-slate-700/50">
+                  <td class="py-3 text-slate-400 whitespace-nowrap">{{ tx.created | date:'short' }}</td>
+                  <td class="py-3">
+                    <div class="text-slate-100">{{ tx.name || 'N/A' }}</div>
+                    @if (tx.email) {
+                      <div class="text-xs text-slate-500">{{ tx.email }}</div>
+                    }
+                  </td>
+                  <td class="py-3 text-slate-100">{{ tx.description }}</td>
+                  <td class="py-3 text-right text-slate-100 font-medium">${{ tx.amount | number:'1.2-2' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <p class="text-slate-500 text-center py-4">No recent transactions</p>
+      }
+    </div>
+  </section>
+
+  <!-- Row 8: Recent Case Submissions -->
+  <section class="mt-8">
+    <h2 class="section-header">Recent Case Submissions</h2>
+    <div class="card overflow-hidden">
+      @if (loadingStates.supabase) {
+        <div class="space-y-3">
+          @for (i of [1, 2, 3, 4, 5]; track i) {
+            <app-loading-skeleton height="40px"></app-loading-skeleton>
+          }
+        </div>
+      } @else if (errors.supabase) {
+        <div class="text-center py-4">
+          <p class="text-red-500 mb-2">{{ errors.supabase }}</p>
+          <button (click)="loadSupabaseData()" class="text-indigo-400 hover:text-indigo-300 underline text-sm">
+            Retry
+          </button>
+        </div>
+      } @else if (supabaseData && supabaseData.recentCases && supabaseData.recentCases.length > 0) {
+        <!-- Mobile Card Layout -->
+        <div class="lg:hidden space-y-3">
+          @for (caseItem of supabaseData!.recentCases; track caseItem.id) {
+            <div class="bg-slate-700/30 rounded-lg p-3 border border-slate-700/50">
+              <div class="flex items-start justify-between mb-2">
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium text-slate-100 truncate">{{ caseItem.email || 'N/A' }}</p>
+                  <p class="text-xs text-slate-400 mt-0.5">{{ caseItem.created_at | date:'short' }}</p>
+                </div>
+                @if (caseItem.unlocked) {
+                  <span class="px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30 ml-2 flex-shrink-0">
+                    Purchased
+                  </span>
+                } @else {
+                  <span class="px-2 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400 border border-slate-500/30 ml-2 flex-shrink-0">
+                    {{ caseItem.status || 'Preview' }}
+                  </span>
+                }
+              </div>
+              <div class="flex items-center gap-2 flex-wrap">
+                @if (caseItem.type === 'quick') {
+                  <span class="px-2 py-0.5 rounded text-xs font-medium bg-blue-500/20 text-blue-400">
+                    Quick
+                  </span>
+                } @else {
+                  <span class="px-2 py-0.5 rounded text-xs font-medium bg-purple-500/20 text-purple-400">
+                    Full
+                  </span>
+                }
+                <span class="text-xs text-slate-300 capitalize">{{ caseItem.noticeType || 'N/A' }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Desktop Table Layout -->
+        <div class="hidden lg:block overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="text-slate-400 text-left border-b border-slate-700">
+                <th class="pb-3 font-medium">Date</th>
+                <th class="pb-3 font-medium">Email</th>
+                <th class="pb-3 font-medium">Type</th>
+                <th class="pb-3 font-medium">Notice</th>
+                <th class="pb-3 font-medium text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (caseItem of supabaseData!.recentCases; track caseItem.id) {
+                <tr class="border-t border-slate-700/50">
+                  <td class="py-3 text-slate-400 whitespace-nowrap">{{ caseItem.created_at | date:'short' }}</td>
+                  <td class="py-3 text-slate-100">{{ caseItem.email || 'N/A' }}</td>
+                  <td class="py-3">
+                    @if (caseItem.type === 'quick') {
+                      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400">
+                        Quick Preview
+                      </span>
+                    } @else {
+                      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400">
+                        Full Preview
+                      </span>
+                    }
+                  </td>
+                  <td class="py-3 text-slate-300 capitalize">{{ caseItem.noticeType || 'N/A' }}</td>
+                  <td class="py-3 text-center">
+                    @if (caseItem.unlocked) {
+                      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400">
+                        Purchased
+                      </span>
+                    } @else {
+                      <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400">
+                        {{ caseItem.status || 'Preview' }}
+                      </span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <p class="text-slate-500 text-center py-4">No recent case submissions</p>
+      }
+    </div>
+  </section>
+</main>

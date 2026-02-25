@@ -1,0 +1,39 @@
+[build]
+  command = "npm run build"
+  publish = "dist/disputemyhoa-dashboard/browser"
+  functions = "netlify/functions"
+
+[dev]
+  command = "npm start"
+  targetPort = 4200
+  port = 8888
+  autoLaunch = false
+  functions = "netlify/functions"
+  functionsPort = 9999
+  timeout = 120
+
+[functions]
+  node_bundler = "esbuild"
+
+# Extend timeout for AI-powered functions (requires Netlify Pro or above)
+[functions."blog-generator"]
+  timeout = 60
+
+[functions."blog-generator-background"]
+  timeout = 900
+
+[functions."legality-scorecard"]
+  timeout = 120
+
+[functions."ad-suggestions"]
+  timeout = 120
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

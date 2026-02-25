@@ -1,0 +1,741 @@
+<!-- Header -->
+<header class="bg-slate-800 border-b border-slate-700 sticky top-14 lg:top-0 z-10">
+  <div class="px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-14 md:h-16">
+      <div class="min-w-0">
+        <h1 class="text-lg md:text-xl font-semibold text-slate-100 truncate">Marketing</h1>
+        <p class="text-xs md:text-sm text-slate-400 hidden sm:block">Google Ads & Email performance</p>
+      </div>
+
+      <div class="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
+        @if (lastRefreshed) {
+          <span class="text-xs text-slate-500 hidden sm:inline">
+            {{ lastRefreshed | date:'shortTime' }}
+          </span>
+        }
+        <button
+          (click)="refreshAll()"
+          [disabled]="isRefreshing"
+          class="btn-secondary flex items-center"
+        >
+          <svg
+            class="w-4 h-4 md:mr-2"
+            [class.animate-spin]="isRefreshing"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span class="hidden md:inline">{{ isRefreshing ? 'Refreshing...' : 'Refresh' }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Period Selector -->
+<div class="px-4 sm:px-6 lg:px-8 py-3 md:py-4 border-b border-slate-700">
+  <div class="flex flex-wrap items-center justify-between gap-3 md:gap-4">
+    <div class="flex items-center space-x-2 overflow-x-auto">
+      <span class="text-xs md:text-sm text-slate-400 flex-shrink-0">Period:</span>
+      <div class="flex bg-slate-800 rounded-lg p-0.5 md:p-1">
+        @for (period of periods; track period.value) {
+          <button
+            (click)="setPeriod(period.value)"
+            [class]="selectedPeriod === period.value
+              ? 'px-2 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium rounded-md bg-indigo-500 text-white whitespace-nowrap'
+              : 'px-2 py-1.5 md:px-4 md:py-2 text-xs md:text-sm font-medium rounded-md text-slate-400 hover:text-slate-100 whitespace-nowrap'"
+          >
+            {{ period.label }}
+          </button>
+        }
+      </div>
+    </div>
+    @if (googleAdsData?.dateRange) {
+      <span class="text-xs text-slate-500">
+        {{ googleAdsData?.dateRange?.startDate }} - {{ googleAdsData?.dateRange?.endDate }}
+      </span>
+    }
+  </div>
+</div>
+
+<!-- Content -->
+<div class="p-4 sm:p-6 lg:p-8">
+  <!-- Marketing KPIs Summary -->
+  <section class="mb-8">
+    <h2 class="section-header">Marketing Summary</h2>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Cost per Conversion -->
+      <div class="card">
+        @if (loadingStates.googleAds) {
+          <app-loading-skeleton height="60px"></app-loading-skeleton>
+        } @else {
+          <p class="text-xs text-slate-400 mb-1">Cost per Conversion</p>
+          <p class="text-2xl font-bold" [class]="getCostPerConversion() < 50 ? 'text-green-400' : getCostPerConversion() < 100 ? 'text-yellow-400' : 'text-red-400'">
+            @if (getCostPerConversion() > 0) {
+              ${{ getCostPerConversion() | number:'1.2-2' }}
+            } @else {
+              N/A
+            }
+          </p>
+          <p class="text-xs text-slate-500 mt-1">Ad Spend / Conversions</p>
+        }
+      </div>
+
+      <!-- Conversion Rate -->
+      <div class="card">
+        @if (loadingStates.googleAds) {
+          <app-loading-skeleton height="60px"></app-loading-skeleton>
+        } @else {
+          <p class="text-xs text-slate-400 mb-1">Conversion Rate</p>
+          <p class="text-2xl font-bold" [class]="getConversionRate() > 5 ? 'text-green-400' : getConversionRate() > 2 ? 'text-yellow-400' : 'text-slate-100'">
+            {{ getConversionRate() | number:'1.2-2' }}%
+          </p>
+          <p class="text-xs text-slate-500 mt-1">Conversions / Clicks</p>
+        }
+      </div>
+
+      <!-- Cost per Lead -->
+      <div class="card">
+        @if (loadingStates.googleAds || loadingStates.klaviyo) {
+          <app-loading-skeleton height="60px"></app-loading-skeleton>
+        } @else {
+          <p class="text-xs text-slate-400 mb-1">Cost per Lead</p>
+          <p class="text-2xl font-bold" [class]="getCostPerLead() > 0 && getCostPerLead() < 20 ? 'text-green-400' : getCostPerLead() < 50 ? 'text-yellow-400' : 'text-slate-100'">
+            @if (getCostPerLead() > 0) {
+              ${{ getCostPerLead() | number:'1.2-2' }}
+            } @else {
+              N/A
+            }
+          </p>
+          <p class="text-xs text-slate-500 mt-1">Ad Spend / Emails Today</p>
+        }
+      </div>
+
+      <!-- Email Growth -->
+      <div class="card">
+        @if (loadingStates.klaviyo) {
+          <app-loading-skeleton height="60px"></app-loading-skeleton>
+        } @else {
+          <p class="text-xs text-slate-400 mb-1">Email List Growth</p>
+          <p class="text-2xl font-bold text-indigo-400">
+            +{{ klaviyoData?.emailsCollectedToday || 0 }}
+          </p>
+          <p class="text-xs text-slate-500 mt-1">
+            {{ getEmailGrowthRate() | number:'1.2-2' }}% daily growth
+          </p>
+        }
+      </div>
+    </div>
+  </section>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <!-- Google Ads -->
+    <section>
+      <h2 class="section-header">Google Ads Performance</h2>
+      <div class="card">
+        @if (loadingStates.googleAds) {
+          <div class="space-y-4">
+            @for (i of [1, 2, 3]; track i) {
+              <app-loading-skeleton height="24px"></app-loading-skeleton>
+            }
+          </div>
+        } @else if (errors.googleAds) {
+          <div class="text-center py-4">
+            <p class="text-red-500 mb-2">{{ errors.googleAds }}</p>
+            <button (click)="loadGoogleAdsData()" class="text-indigo-400 hover:text-indigo-300 underline text-sm">
+              Retry
+            </button>
+          </div>
+        } @else if (googleAdsData?.isMockData) {
+          <div class="text-center py-8">
+            <svg class="w-12 h-12 mx-auto text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+            <p class="text-slate-400 mb-2">Google Ads not connected</p>
+            <p class="text-xs text-slate-500 max-w-xs mx-auto">
+              Add your Google Ads API credentials to see real campaign data.
+            </p>
+          </div>
+        } @else {
+          <!-- Daily Spend Progress -->
+          <div class="mb-6">
+            <div class="flex items-baseline justify-between mb-2">
+              <span class="text-sm text-slate-400">Daily Spend</span>
+              <span class="text-sm text-slate-400">
+                ${{ googleAdsData?.dailySpend | number:'1.2-2' }} / ${{ googleAdsData?.dailyBudget | number:'1.0-0' }}
+              </span>
+            </div>
+            <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+              <div
+                class="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                [style.width.%]="getSpendPercentage()"
+              ></div>
+            </div>
+          </div>
+
+          <!-- Stats Grid -->
+          <div class="grid grid-cols-3 gap-4 mb-6">
+            <div class="text-center">
+              <p class="text-2xl font-bold text-slate-100">{{ googleAdsData?.clicks | number }}</p>
+              <p class="text-xs text-slate-400">Clicks</p>
+            </div>
+            <div class="text-center">
+              <p class="text-2xl font-bold text-slate-100">{{ googleAdsData?.impressions | number }}</p>
+              <p class="text-xs text-slate-400">Impressions</p>
+            </div>
+            <div class="text-center">
+              <p class="text-2xl font-bold text-slate-100">${{ googleAdsData?.cpc | number:'1.2-2' }}</p>
+              <p class="text-xs text-slate-400">Avg CPC</p>
+            </div>
+          </div>
+
+          <!-- Additional Metrics -->
+          <div class="grid grid-cols-2 gap-4 mb-6 p-4 bg-slate-700/30 rounded-lg">
+            <div>
+              <p class="text-sm text-slate-400">CTR</p>
+              <p class="text-xl font-bold text-slate-100">{{ getCtr() | number:'1.2-2' }}%</p>
+            </div>
+            <div>
+              <p class="text-sm text-slate-400">Conversions</p>
+              <p class="text-xl font-bold text-green-400">{{ googleAdsData?.conversions | number }}</p>
+            </div>
+            <div>
+              <p class="text-sm text-slate-400">Conversion Rate</p>
+              <p class="text-xl font-bold" [class]="getConversionRate() > 5 ? 'text-green-400' : 'text-slate-100'">{{ getConversionRate() | number:'1.2-2' }}%</p>
+            </div>
+            <div>
+              <p class="text-sm text-slate-400">Cost/Conversion</p>
+              <p class="text-xl font-bold" [class]="getCostPerConversion() < 50 ? 'text-green-400' : 'text-amber-400'">
+                @if (getCostPerConversion() > 0) {
+                  ${{ getCostPerConversion() | number:'1.2-2' }}
+                } @else {
+                  N/A
+                }
+              </p>
+            </div>
+          </div>
+
+          <!-- Best Performing Campaign -->
+          @if (getBestCampaign()) {
+            <div class="mb-6 p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs text-green-400 font-medium">Best Performing Campaign</p>
+                  <p class="text-sm text-slate-100 truncate">{{ getBestCampaign()?.name }}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-lg font-bold text-green-400">${{ getBestCampaign()?.cpc | number:'1.2-2' }}</p>
+                  <p class="text-xs text-slate-400">CPC</p>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Campaign Breakdown -->
+          <div class="border-t border-slate-700 pt-4">
+            <h3 class="text-sm font-medium text-slate-300 mb-3">Campaign Breakdown</h3>
+            @if (googleAdsData && googleAdsData.campaigns && googleAdsData.campaigns.length > 0) {
+              <!-- Mobile Card Layout -->
+              <div class="lg:hidden space-y-2">
+                @for (campaign of googleAdsData!.campaigns; track campaign.name) {
+                  <div class="bg-slate-700/30 rounded-lg p-3 border border-slate-700/50">
+                    <p class="text-sm font-medium text-slate-100 truncate mb-2" [title]="campaign.name">{{ campaign.name }}</p>
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                      <div>
+                        <p class="text-xs text-slate-400">Spend</p>
+                        <p class="text-sm font-medium text-slate-200">${{ campaign.spend | number:'1.2-2' }}</p>
+                      </div>
+                      <div>
+                        <p class="text-xs text-slate-400">Clicks</p>
+                        <p class="text-sm font-medium text-slate-200">{{ campaign.clicks | number }}</p>
+                      </div>
+                      <div>
+                        <p class="text-xs text-slate-400">CPC</p>
+                        <p class="text-sm font-medium text-slate-200">${{ campaign.cpc | number:'1.2-2' }}</p>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Desktop Table Layout -->
+              <div class="hidden lg:block overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead>
+                    <tr class="text-slate-400 text-left">
+                      <th class="pb-2 font-medium">Campaign</th>
+                      <th class="pb-2 font-medium text-right">Spend</th>
+                      <th class="pb-2 font-medium text-right">Clicks</th>
+                      <th class="pb-2 font-medium text-right">CPC</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (campaign of googleAdsData!.campaigns; track campaign.name) {
+                      <tr class="border-t border-slate-700">
+                        <td class="py-2 text-slate-100 max-w-[150px] truncate" [title]="campaign.name">
+                          {{ campaign.name }}
+                        </td>
+                        <td class="py-2 text-right text-slate-300">${{ campaign.spend | number:'1.2-2' }}</td>
+                        <td class="py-2 text-right text-slate-300">{{ campaign.clicks | number }}</td>
+                        <td class="py-2 text-right text-slate-300">${{ campaign.cpc | number:'1.2-2' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <p class="text-slate-500 text-sm">No campaign data available</p>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+    <!-- Email / Klaviyo -->
+    <section>
+      <h2 class="section-header">Email Collection (Klaviyo)</h2>
+      <div class="card">
+        @if (loadingStates.klaviyo) {
+          <div class="space-y-4">
+            @for (i of [1, 2, 3]; track i) {
+              <app-loading-skeleton height="24px"></app-loading-skeleton>
+            }
+          </div>
+        } @else if (errors.klaviyo) {
+          <div class="text-center py-4">
+            <p class="text-red-500 mb-2">{{ errors.klaviyo }}</p>
+            <button (click)="loadKlaviyoData()" class="text-indigo-400 hover:text-indigo-300 underline text-sm">
+              Retry
+            </button>
+          </div>
+        } @else if (klaviyoData?.isMockData) {
+          <div class="text-center py-8">
+            <svg class="w-12 h-12 mx-auto text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            <p class="text-slate-400 mb-2">Klaviyo not connected</p>
+            <p class="text-xs text-slate-500">Add KLAVIYO_API_KEY to see email data</p>
+          </div>
+        } @else {
+          <!-- Total Profiles -->
+          <div class="mb-4">
+            <div class="flex items-baseline justify-between">
+              <span class="text-3xl font-bold text-slate-100">{{ klaviyoData?.totalProfiles | number }}</span>
+              @if (klaviyoData && klaviyoData.emailsCollectedToday && klaviyoData.emailsCollectedToday > 0) {
+                <span class="text-sm text-green-500">+{{ klaviyoData.emailsCollectedToday }} today</span>
+              }
+            </div>
+            <p class="text-sm text-slate-400 mt-1">Total Emails (All Profiles)</p>
+          </div>
+
+          <!-- Emails in Flow -->
+          <div class="mb-4 p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-lg">
+            <div class="flex items-baseline justify-between">
+              <span class="text-sm text-slate-400">Emails in Abandonment Flow</span>
+              <span class="text-xl font-bold text-indigo-400">{{ klaviyoData?.totalEmailsInFlow | number }}</span>
+            </div>
+          </div>
+
+          <!-- List Breakdown -->
+          <div class="border-t border-slate-700 pt-4">
+            <h3 class="text-sm font-medium text-slate-300 mb-3">Flow Breakdown</h3>
+            <div class="space-y-3">
+              <div class="flex justify-between items-center p-3 bg-purple-500/10 rounded-lg">
+                <div>
+                  <p class="text-slate-100 font-medium">Full Preview Abandonment</p>
+                  <p class="text-xs text-slate-500">Completed full preview form</p>
+                </div>
+                <span class="text-xl font-bold text-purple-400">{{ klaviyoData?.fullPreviewEmails | number }}</span>
+              </div>
+              <div class="flex justify-between items-center p-3 bg-blue-500/10 rounded-lg">
+                <div>
+                  <p class="text-slate-100 font-medium">Quick Preview Abandonment</p>
+                  <p class="text-xs text-slate-500">Completed quick preview form</p>
+                </div>
+                <span class="text-xl font-bold text-blue-400">{{ klaviyoData?.quickPreviewEmails | number }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Flows -->
+          @if (klaviyoData && klaviyoData.flowStats && klaviyoData.flowStats.length > 0) {
+            <div class="border-t border-slate-700 mt-4 pt-4">
+              <h3 class="text-sm font-medium text-slate-300 mb-3">Flows ({{ klaviyoData.totalFlows }})</h3>
+              <div class="space-y-2">
+                @for (flow of klaviyoData!.flowStats; track flow.name) {
+                  <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-300 truncate mr-2">{{ flow.name }}</span>
+                    <span class="text-xs px-2 py-1 rounded-full"
+                      [class]="flow.status === 'live' ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'">
+                      {{ flow.status }}
+                    </span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        }
+      </div>
+    </section>
+  </div>
+
+  <!-- Campaign Deep Dive: Keywords & Ads -->
+  @if (googleAdsData && !googleAdsData.isMockData && googleAdsData.targetCampaign) {
+    <section class="mt-8">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="section-header mb-0">{{ googleAdsData.targetCampaign }} - Deep Dive</h2>
+        <button
+          (click)="loadSuggestions()"
+          [disabled]="loadingStates.suggestions"
+          class="btn-primary flex items-center text-sm"
+        >
+          @if (loadingStates.suggestions) {
+            <svg class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Analyzing...
+          } @else {
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+            Get AI Suggestions
+          }
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Keywords Section -->
+        <div class="card">
+          <h3 class="text-sm font-medium text-slate-300 mb-4">Keywords Performance</h3>
+          @if (loadingStates.googleAds) {
+            <div class="space-y-3">
+              @for (i of [1, 2, 3, 4, 5]; track i) {
+                <app-loading-skeleton height="32px"></app-loading-skeleton>
+              }
+            </div>
+          } @else if (googleAdsData.keywords && googleAdsData.keywords.length > 0) {
+            <div class="overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead>
+                  <tr class="text-slate-400 text-left border-b border-slate-700">
+                    <th class="pb-2 font-medium">Keyword</th>
+                    <th class="pb-2 font-medium text-center">Match</th>
+                    <th class="pb-2 font-medium text-center">QS</th>
+                    <th class="pb-2 font-medium text-right">Clicks</th>
+                    <th class="pb-2 font-medium text-right">CTR</th>
+                    <th class="pb-2 font-medium text-right">Conv</th>
+                    <th class="pb-2 font-medium text-right">CPC</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (kw of googleAdsData.keywords; track kw.keyword) {
+                    <tr class="border-t border-slate-700/50 hover:bg-slate-700/20">
+                      <td class="py-2 text-slate-100 max-w-[120px] truncate" [title]="kw.keyword">
+                        {{ kw.keyword }}
+                      </td>
+                      <td class="py-2 text-center">
+                        <span class="px-1.5 py-0.5 rounded text-xs"
+                          [class]="kw.matchType === 'EXACT' ? 'bg-green-500/20 text-green-400' : kw.matchType === 'PHRASE' ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-500/20 text-slate-400'">
+                          {{ kw.matchType }}
+                        </span>
+                      </td>
+                      <td class="py-2 text-center">
+                        @if (kw.qualityScore !== null) {
+                          <span class="px-1.5 py-0.5 rounded text-xs font-medium"
+                            [class]="kw.qualityScore >= 7 ? 'bg-green-500/20 text-green-400' : kw.qualityScore >= 5 ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'">
+                            {{ kw.qualityScore }}
+                          </span>
+                        } @else {
+                          <span class="text-slate-500">-</span>
+                        }
+                      </td>
+                      <td class="py-2 text-right text-slate-300">{{ kw.clicks }}</td>
+                      <td class="py-2 text-right" [class]="kw.ctr > 3 ? 'text-green-400' : kw.ctr > 1 ? 'text-slate-300' : 'text-red-400'">
+                        {{ kw.ctr | number:'1.2-2' }}%
+                      </td>
+                      <td class="py-2 text-right text-green-400">{{ kw.conversions | number:'1.0-1' }}</td>
+                      <td class="py-2 text-right text-slate-300">${{ kw.cpc | number:'1.2-2' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          } @else {
+            <p class="text-slate-500 text-sm text-center py-4">No keyword data available for this period</p>
+          }
+        </div>
+
+        <!-- Ad Copy Section -->
+        <div class="card">
+          <h3 class="text-sm font-medium text-slate-300 mb-4">Ad Copy</h3>
+          @if (loadingStates.googleAds) {
+            <div class="space-y-3">
+              @for (i of [1, 2]; track i) {
+                <app-loading-skeleton height="100px"></app-loading-skeleton>
+              }
+            </div>
+          } @else if (googleAdsData.ads && googleAdsData.ads.length > 0) {
+            <div class="space-y-4">
+              @for (ad of googleAdsData.ads; track ad.adId) {
+                <div class="p-4 bg-slate-700/30 rounded-lg border border-slate-700/50">
+                  <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs px-2 py-0.5 rounded"
+                      [class]="ad.status === 'ENABLED' ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'">
+                      {{ ad.status }}
+                    </span>
+                    <span class="text-xs text-slate-500">{{ ad.clicks }} clicks | {{ ad.ctr | number:'1.2-2' }}% CTR</span>
+                  </div>
+                  <div class="mb-3">
+                    <p class="text-xs text-slate-400 mb-1">Headlines:</p>
+                    <div class="flex flex-wrap gap-1">
+                      @for (headline of ad.headlines; track headline) {
+                        <span class="text-xs px-2 py-1 bg-indigo-500/20 text-indigo-300 rounded">{{ headline }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div>
+                    <p class="text-xs text-slate-400 mb-1">Descriptions:</p>
+                    <div class="space-y-1">
+                      @for (desc of ad.descriptions; track desc) {
+                        <p class="text-xs text-slate-300">{{ desc }}</p>
+                      }
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          } @else {
+            <p class="text-slate-500 text-sm text-center py-4">No ad copy data available for this period</p>
+          }
+        </div>
+      </div>
+
+      <!-- Search Terms Section -->
+      @if (googleAdsData.searchTerms && googleAdsData.searchTerms.length > 0) {
+        <div class="card mt-6">
+          <h3 class="text-sm font-medium text-slate-300 mb-4">Search Terms (What people actually searched)</h3>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-slate-400 text-left border-b border-slate-700">
+                  <th class="pb-2 font-medium">Search Term</th>
+                  <th class="pb-2 font-medium text-center">Status</th>
+                  <th class="pb-2 font-medium text-right">Clicks</th>
+                  <th class="pb-2 font-medium text-right">Impr</th>
+                  <th class="pb-2 font-medium text-right">CTR</th>
+                  <th class="pb-2 font-medium text-right">Conv</th>
+                  <th class="pb-2 font-medium text-right">Spend</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (st of googleAdsData.searchTerms; track st.searchTerm) {
+                  <tr class="border-t border-slate-700/50 hover:bg-slate-700/20">
+                    <td class="py-2 text-slate-100 max-w-[200px] truncate" [title]="st.searchTerm">
+                      {{ st.searchTerm }}
+                    </td>
+                    <td class="py-2 text-center">
+                      <span class="px-1.5 py-0.5 rounded text-xs"
+                        [class]="st.status === 'ADDED' ? 'bg-green-500/20 text-green-400' : st.status === 'EXCLUDED' ? 'bg-red-500/20 text-red-400' : 'bg-slate-500/20 text-slate-400'">
+                        {{ st.status || 'NONE' }}
+                      </span>
+                    </td>
+                    <td class="py-2 text-right text-slate-300">{{ st.clicks }}</td>
+                    <td class="py-2 text-right text-slate-300">{{ st.impressions }}</td>
+                    <td class="py-2 text-right" [class]="st.ctr > 3 ? 'text-green-400' : st.ctr > 1 ? 'text-slate-300' : 'text-red-400'">
+                      {{ st.ctr | number:'1.2-2' }}%
+                    </td>
+                    <td class="py-2 text-right text-green-400">{{ st.conversions | number:'1.0-1' }}</td>
+                    <td class="py-2 text-right text-slate-300">${{ st.spend | number:'1.2-2' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <p class="text-xs text-slate-500 mt-3">
+            These are actual search queries that triggered your ads. Use this data to find new keyword opportunities or negative keywords.
+          </p>
+        </div>
+      }
+    </section>
+
+    <!-- AI Suggestions Section -->
+    @if (suggestionsData || loadingStates.suggestions || errors.suggestions) {
+      <section class="mt-8">
+        <h2 class="section-header">AI Optimization Suggestions</h2>
+
+        @if (loadingStates.suggestions) {
+          <div class="card">
+            <div class="flex items-center justify-center py-8">
+              <svg class="w-8 h-8 text-indigo-400 animate-spin mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span class="text-slate-300">Analyzing campaign data with AI...</span>
+            </div>
+          </div>
+        } @else if (errors.suggestions) {
+          <div class="card">
+            <div class="text-center py-4">
+              <p class="text-red-500 mb-2">{{ errors.suggestions }}</p>
+              <button (click)="loadSuggestions()" class="text-indigo-400 hover:text-indigo-300 underline text-sm">
+                Retry
+              </button>
+            </div>
+          </div>
+        } @else if (suggestionsData) {
+          <!-- Performance Summary -->
+          @if (suggestionsData.performanceSummary) {
+            <div class="card mb-6 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border-indigo-500/30">
+              <div class="flex items-start">
+                <svg class="w-5 h-5 text-indigo-400 mr-3 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p class="text-sm font-medium text-slate-200 mb-1">Performance Summary</p>
+                  <p class="text-sm text-slate-300">{{ suggestionsData.performanceSummary }}</p>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Negative Keywords Section (Priority) -->
+          @if (suggestionsData.negativeKeywordSuggestions && suggestionsData.negativeKeywordSuggestions.length > 0) {
+            <div class="card mb-6 bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30">
+              <h3 class="text-sm font-medium text-slate-300 mb-4 flex items-center">
+                <svg class="w-4 h-4 mr-2 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                </svg>
+                Negative Keywords to Add (Stop Wasting Budget)
+              </h3>
+              <p class="text-xs text-slate-400 mb-4">
+                These search terms attract attorney-seekers who won't convert to a $49 self-serve product. Add them as negative keywords immediately.
+              </p>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                @for (negKw of suggestionsData.negativeKeywordSuggestions; track negKw.keyword) {
+                  <div class="p-3 bg-slate-800/50 rounded-lg border border-red-500/30">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-400 font-medium">
+                        EXCLUDE
+                      </span>
+                      <span class="text-xs px-2 py-0.5 rounded border" [class]="getPriorityClass(negKw.priority)">
+                        {{ negKw.priority }}
+                      </span>
+                    </div>
+                    <p class="text-sm text-slate-100 font-medium mb-1">{{ negKw.keyword }}</p>
+                    <p class="text-xs text-slate-400">{{ negKw.rationale }}</p>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Keyword Suggestions -->
+            <div class="card">
+              <h3 class="text-sm font-medium text-slate-300 mb-4 flex items-center">
+                <svg class="w-4 h-4 mr-2 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+                Keyword Suggestions
+              </h3>
+              @if (suggestionsData.keywordSuggestions && suggestionsData.keywordSuggestions.length > 0) {
+                <div class="space-y-3">
+                  @for (suggestion of suggestionsData.keywordSuggestions; track suggestion.keyword) {
+                    <div class="p-3 bg-slate-700/30 rounded-lg border border-slate-700/50">
+                      <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs px-2 py-0.5 rounded font-medium" [class]="getActionClass(suggestion.action)">
+                          {{ suggestion.action | uppercase }}
+                        </span>
+                        <span class="text-xs px-2 py-0.5 rounded border" [class]="getPriorityClass(suggestion.priority)">
+                          {{ suggestion.priority }}
+                        </span>
+                      </div>
+                      <p class="text-sm text-slate-100 font-medium mb-1">{{ suggestion.keyword }}</p>
+                      <p class="text-xs text-slate-400">{{ suggestion.rationale }}</p>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="text-slate-500 text-sm text-center py-4">No keyword suggestions</p>
+              }
+            </div>
+
+            <!-- Ad Copy Suggestions -->
+            <div class="card">
+              <h3 class="text-sm font-medium text-slate-300 mb-4 flex items-center">
+                <svg class="w-4 h-4 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Ad Copy Suggestions
+              </h3>
+              @if (suggestionsData.adCopySuggestions && suggestionsData.adCopySuggestions.length > 0) {
+                <div class="space-y-3">
+                  @for (suggestion of suggestionsData.adCopySuggestions; track suggestion.suggested) {
+                    <div class="p-3 bg-slate-700/30 rounded-lg border border-slate-700/50">
+                      <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs px-2 py-0.5 rounded bg-blue-500/20 text-blue-400">
+                          {{ suggestion.type }}
+                        </span>
+                        <span class="text-xs px-2 py-0.5 rounded border" [class]="getPriorityClass(suggestion.priority)">
+                          {{ suggestion.priority }}
+                        </span>
+                      </div>
+                      @if (suggestion.current) {
+                        <p class="text-xs text-slate-500 mb-1">Current: <span class="line-through">{{ suggestion.current }}</span></p>
+                      }
+                      <p class="text-sm text-green-400 font-medium mb-1">{{ suggestion.suggested }}</p>
+                      <p class="text-xs text-slate-400">{{ suggestion.rationale }}</p>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="text-slate-500 text-sm text-center py-4">No ad copy suggestions</p>
+              }
+            </div>
+
+            <!-- General Recommendations -->
+            <div class="card">
+              <h3 class="text-sm font-medium text-slate-300 mb-4 flex items-center">
+                <svg class="w-4 h-4 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                General Recommendations
+              </h3>
+              @if (suggestionsData.generalRecommendations && suggestionsData.generalRecommendations.length > 0) {
+                <div class="space-y-3">
+                  @for (rec of suggestionsData.generalRecommendations; track rec.recommendation) {
+                    <div class="p-3 bg-slate-700/30 rounded-lg border border-slate-700/50">
+                      <div class="flex items-center justify-between mb-2">
+                        <div class="flex items-center">
+                          <svg class="w-4 h-4 mr-1.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="getCategoryIcon(rec.category)" />
+                          </svg>
+                          <span class="text-xs text-slate-400 capitalize">{{ rec.category }}</span>
+                        </div>
+                        <span class="text-xs px-2 py-0.5 rounded border" [class]="getPriorityClass(rec.priority)">
+                          {{ rec.priority }}
+                        </span>
+                      </div>
+                      <p class="text-sm text-slate-100 mb-1">{{ rec.recommendation }}</p>
+                      <p class="text-xs text-green-400">Expected: {{ rec.expectedImpact }}</p>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <p class="text-slate-500 text-sm text-center py-4">No recommendations</p>
+              }
+            </div>
+          </div>
+
+          <!-- Generation Info -->
+          @if (suggestionsData.generatedAt) {
+            <p class="text-xs text-slate-500 text-center mt-4">
+              Generated {{ suggestionsData.generatedAt | date:'medium' }} for {{ suggestionsData.campaignAnalyzed }}
+            </p>
+          }
+        }
+      </section>
+    }
+  }
+</div>

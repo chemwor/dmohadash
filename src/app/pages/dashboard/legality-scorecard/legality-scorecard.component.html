@@ -1,0 +1,743 @@
+<!-- Header -->
+<header class="bg-slate-800 border-b border-slate-700 sticky top-14 lg:top-0 z-10">
+  <div class="px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-14 md:h-16">
+      <div class="min-w-0">
+        <h1 class="text-lg md:text-xl font-semibold text-slate-100 truncate">Legality Scorecard</h1>
+        <p class="text-xs md:text-sm text-slate-400 hidden sm:block">Risk analysis & strategic insights</p>
+      </div>
+      <div class="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
+        @if (fromCache && cacheAgeHours > 0) {
+          <span class="text-xs text-slate-500 hidden sm:inline">Updated {{ cacheAgeHours }}h ago</span>
+        }
+        <button (click)="generateNewScorecard()" [disabled]="isGenerating || isLoading" class="btn-secondary flex items-center">
+          <svg class="w-4 h-4 md:mr-2" [class.animate-spin]="isGenerating" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span class="hidden md:inline">{{ isGenerating ? 'Analyzing...' : 'Summarize Trends' }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Content -->
+<div class="p-4 sm:p-6 lg:p-8">
+  @if (isLoading) {
+    <!-- Loading State -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <div class="card">
+          <app-loading-skeleton height="80px"></app-loading-skeleton>
+        </div>
+      }
+    </div>
+    <div class="card">
+      <app-loading-skeleton height="200px"></app-loading-skeleton>
+    </div>
+  } @else if (error && !scorecard) {
+    <!-- Error State -->
+    <div class="card text-center py-12">
+      <svg class="w-16 h-16 mx-auto text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+      <p class="text-slate-400 text-lg mb-2">No Scorecard Available</p>
+      <p class="text-slate-500 text-sm mb-4">{{ error || 'Generate your first analysis to see risk insights' }}</p>
+      <button (click)="generateNewScorecard()" [disabled]="isGenerating" class="btn-primary">
+        {{ isGenerating ? 'Analyzing...' : 'Summarize Trends' }}
+      </button>
+    </div>
+  } @else if (scorecard) {
+    <!-- Tab Navigation -->
+    <div class="flex space-x-1 mb-6 bg-slate-800 p-1 rounded-lg overflow-x-auto">
+      <button
+        (click)="setActiveTab('overview')"
+        class="px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
+        [class.bg-indigo-500]="activeTab === 'overview'"
+        [class.text-white]="activeTab === 'overview'"
+        [class.text-slate-400]="activeTab !== 'overview'"
+        [class.hover:text-slate-100]="activeTab !== 'overview'">
+        Overview
+      </button>
+      <button
+        (click)="setActiveTab('trends')"
+        class="px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
+        [class.bg-indigo-500]="activeTab === 'trends'"
+        [class.text-white]="activeTab === 'trends'"
+        [class.text-slate-400]="activeTab !== 'trends'"
+        [class.hover:text-slate-100]="activeTab !== 'trends'">
+        Trends & Patterns
+      </button>
+      <button
+        (click)="setActiveTab('insights')"
+        class="px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
+        [class.bg-indigo-500]="activeTab === 'insights'"
+        [class.text-white]="activeTab === 'insights'"
+        [class.text-slate-400]="activeTab !== 'insights'"
+        [class.hover:text-slate-100]="activeTab !== 'insights'">
+        Product Insights
+      </button>
+      <button
+        (click)="setActiveTab('recommendations')"
+        class="px-4 py-2 rounded-md text-sm font-medium transition-colors whitespace-nowrap"
+        [class.bg-indigo-500]="activeTab === 'recommendations'"
+        [class.text-white]="activeTab === 'recommendations'"
+        [class.text-slate-400]="activeTab !== 'recommendations'"
+        [class.hover:text-slate-100]="activeTab !== 'recommendations'">
+        Recommendations
+      </button>
+    </div>
+
+    <!-- Executive Summary (always visible) -->
+    @if (analysis?.executive_summary) {
+      <div class="card mb-6 border-indigo-500/30">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+            <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-sm font-medium text-slate-100 mb-1">Executive Summary</h3>
+            <p class="text-sm text-slate-400 leading-relaxed">{{ analysis?.executive_summary }}</p>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Overview Tab -->
+    @if (activeTab === 'overview') {
+      <!-- Summary Stats -->
+      <section class="mb-6">
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <div class="card">
+            <p class="text-xs text-slate-400 mb-1">Cases Analyzed</p>
+            <p class="text-2xl font-bold text-slate-100">{{ scorecard.cases_analyzed }}</p>
+            <p class="text-xs text-slate-500 mt-1">{{ formatDateRange() }}</p>
+          </div>
+          <div class="card">
+            <p class="text-xs text-slate-400 mb-1">Conversion Rate</p>
+            <p class="text-2xl font-bold text-green-400">{{ getConversionRate() | number:'1.1-1' }}%</p>
+            <p class="text-xs text-slate-500 mt-1">Cases to purchases</p>
+          </div>
+          <div class="card">
+            <p class="text-xs text-slate-400 mb-1">Highest Risk</p>
+            <p class="text-lg font-bold text-red-400 truncate">{{ analysis?.risk_assessment?.highest_risk_category || 'N/A' }}</p>
+            <p class="text-xs text-slate-500 mt-1">Requires attention</p>
+          </div>
+          <div class="card">
+            <p class="text-xs text-slate-400 mb-1">Fastest Growing</p>
+            <p class="text-lg font-bold text-amber-400 truncate">{{ analysis?.risk_assessment?.fastest_growing_category || 'N/A' }}</p>
+            <p class="text-xs text-slate-500 mt-1">Trending up</p>
+          </div>
+          <div class="card col-span-2 lg:col-span-1">
+            <p class="text-xs text-slate-400 mb-1">Most Profitable</p>
+            <p class="text-lg font-bold text-green-400 truncate">{{ analysis?.risk_assessment?.most_profitable_category || 'N/A' }}</p>
+            <p class="text-xs text-slate-500 mt-1">Highest revenue</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Risk Overview -->
+      <section class="mb-6">
+        <h2 class="section-header">Risk Overview</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <!-- High Risk -->
+          <div class="card border-red-500/30">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="w-3 h-3 rounded-full bg-red-500"></span>
+              <span class="text-sm font-medium text-slate-100">High Risk</span>
+              <span class="text-xs text-slate-500">({{ getHighRiskCategories().length }})</span>
+            </div>
+            @if (getHighRiskCategories().length === 0) {
+              <p class="text-sm text-slate-500">No high-risk categories</p>
+            } @else {
+              <div class="space-y-2">
+                @for (cat of getHighRiskCategories(); track cat.name) {
+                  <div class="flex items-center justify-between text-sm">
+                    <span class="text-slate-300 truncate">{{ cat.name }}</span>
+                    <span class="text-red-400">{{ cat.case_count }} cases</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Worsening Trends -->
+          <div class="card border-amber-500/30">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="text-amber-400 text-lg">&#8600;</span>
+              <span class="text-sm font-medium text-slate-100">Worsening Trends</span>
+              <span class="text-xs text-slate-500">({{ getWorseningCategories().length }})</span>
+            </div>
+            @if (getWorseningCategories().length === 0) {
+              <p class="text-sm text-slate-500">No worsening trends</p>
+            } @else {
+              <div class="space-y-2">
+                @for (cat of getWorseningCategories(); track cat.name) {
+                  <div class="flex items-center justify-between text-sm">
+                    <span class="text-slate-300 truncate">{{ cat.name }}</span>
+                    <span class="text-amber-400">+{{ getTrendChange(cat) }}%</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+
+          <!-- Improving -->
+          <div class="card border-green-500/30">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="text-green-400 text-lg">&#8599;</span>
+              <span class="text-sm font-medium text-slate-100">Improving</span>
+              <span class="text-xs text-slate-500">({{ getImprovingCategories().length }})</span>
+            </div>
+            @if (getImprovingCategories().length === 0) {
+              <p class="text-sm text-slate-500">No improving categories</p>
+            } @else {
+              <div class="space-y-2">
+                @for (cat of getImprovingCategories(); track cat.name) {
+                  <div class="flex items-center justify-between text-sm">
+                    <span class="text-slate-300 truncate">{{ cat.name }}</span>
+                    <span class="text-green-400">{{ getTrendChange(cat) }}%</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      </section>
+
+      <!-- Category Breakdown -->
+      <section class="mb-6">
+        <h2 class="section-header">Category Analysis</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          @for (category of getSortedCategories(); track category.name) {
+            <div class="card cursor-pointer hover:border-slate-600 transition-colors"
+                 [class.border-indigo-500]="selectedCategory?.name === category.name"
+                 (click)="selectCategory(category)">
+              <div class="flex items-start justify-between mb-3">
+                <div class="min-w-0">
+                  <h3 class="text-sm font-medium text-slate-100 truncate">{{ category.name }}</h3>
+                  <p class="text-xs text-slate-500">{{ category.case_count }} cases</p>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                  <span class="px-2 py-0.5 rounded text-xs font-medium"
+                        [class]="getRiskLevelBgColor(category.risk_level)"
+                        [class.text-green-400]="category.risk_level === 'low'"
+                        [class.text-amber-400]="category.risk_level === 'medium'"
+                        [class.text-red-400]="category.risk_level === 'high'">
+                    {{ getRiskLevelLabel(category.risk_level) }}
+                  </span>
+                  <span class="text-lg" [class]="getTrendColor(category.trend_direction)">{{ getTrendIcon(category.trend_direction) }}</span>
+                </div>
+              </div>
+
+              @if (category.revenue > 0) {
+                <div class="flex items-center gap-4 text-xs text-slate-500 mb-3">
+                  <span>Conv: {{ category.conversion_rate | number:'1.0-0' }}%</span>
+                  <span class="text-green-400">${{ category.revenue | number:'1.0-0' }}</span>
+                </div>
+              }
+
+              @if (category.top_states && category.top_states.length > 0) {
+                <div class="flex flex-wrap gap-1 mb-2">
+                  @for (state of category.top_states.slice(0, 3); track state) {
+                    <span class="px-1.5 py-0.5 bg-slate-700 rounded text-xs text-slate-400">{{ state }}</span>
+                  }
+                </div>
+              }
+
+              <p class="text-xs text-slate-400 line-clamp-2">{{ category.strategic_notes }}</p>
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- Selected Category Detail -->
+      @if (selectedCategory) {
+        <section class="mb-6">
+          <h2 class="section-header">{{ selectedCategory.name }} - Detailed Analysis</h2>
+          <div class="card">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <h4 class="text-sm font-medium text-slate-100 mb-3">Strategic Notes</h4>
+                <p class="text-sm text-slate-400 mb-4">{{ selectedCategory.strategic_notes }}</p>
+              </div>
+
+              <div>
+                <h4 class="text-sm font-medium text-slate-100 mb-3">Common Defenses</h4>
+                @if (selectedCategory.common_defenses && selectedCategory.common_defenses.length > 0) {
+                  <ul class="space-y-2">
+                    @for (defense of selectedCategory.common_defenses; track defense) {
+                      <li class="flex items-start gap-2 text-sm text-slate-400">
+                        <svg class="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                        {{ defense }}
+                      </li>
+                    }
+                  </ul>
+                } @else {
+                  <p class="text-sm text-slate-500">No specific defenses identified</p>
+                }
+
+                @if (selectedCategory.top_states && selectedCategory.top_states.length > 0) {
+                  <h4 class="text-sm font-medium text-slate-100 mt-4 mb-3">Top States</h4>
+                  <div class="flex flex-wrap gap-2">
+                    @for (state of selectedCategory.top_states; track state) {
+                      <span class="px-2 py-1 bg-slate-700 rounded text-sm text-slate-300">{{ state }}</span>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        </section>
+      }
+    }
+
+    <!-- Trends & Patterns Tab -->
+    @if (activeTab === 'trends') {
+      <!-- Top Violations -->
+      <section class="mb-6">
+        <h2 class="section-header">Most Common Violation Types</h2>
+        <div class="card">
+          @if (getTopViolations().length === 0) {
+            <p class="text-sm text-slate-500">No violation data available</p>
+          } @else {
+            <div class="space-y-4">
+              @for (violation of getTopViolations(); track violation.type) {
+                <div>
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-sm text-slate-300">{{ violation.type }}</span>
+                    <span class="text-sm text-slate-400">{{ violation.count }} cases ({{ violation.percentage | number:'1.0-0' }}%)</span>
+                  </div>
+                  <div class="w-full bg-slate-700 rounded-full h-2">
+                    <div class="bg-indigo-500 h-2 rounded-full" [style.width.%]="violation.percentage"></div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      </section>
+
+      <!-- Seasonal Patterns -->
+      <section class="mb-6">
+        <h2 class="section-header">Seasonal Patterns</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="card">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <div>
+                <h4 class="text-sm font-medium text-slate-100">Peak Activity</h4>
+                <p class="text-xs text-slate-500">When cases spike</p>
+              </div>
+            </div>
+            @if (analysis?.trends_summary?.seasonal_patterns) {
+              <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Peak Month:</span>
+                  <span class="text-slate-200">{{ analysis?.trends_summary?.seasonal_patterns?.peak_month }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Peak Day:</span>
+                  <span class="text-slate-200">{{ analysis?.trends_summary?.seasonal_patterns?.peak_day }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-400">Peak Time:</span>
+                  <span class="text-slate-200">{{ analysis?.trends_summary?.seasonal_patterns?.peak_time }}</span>
+                </div>
+              </div>
+            } @else {
+              <p class="text-sm text-slate-500">No seasonal data available</p>
+            }
+          </div>
+
+          <div class="card">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <div>
+                <h4 class="text-sm font-medium text-slate-100">Geographic Insights</h4>
+                <p class="text-xs text-slate-500">Regional activity</p>
+              </div>
+            </div>
+            @if (analysis?.trends_summary?.geographic_insights) {
+              <div class="space-y-3">
+                @if (analysis?.trends_summary?.geographic_insights?.top_states?.length) {
+                  <div>
+                    <p class="text-xs text-slate-400 mb-1">Top States:</p>
+                    <div class="flex flex-wrap gap-1">
+                      @for (state of (analysis?.trends_summary?.geographic_insights?.top_states || []); track state) {
+                        <span class="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded text-xs">{{ state }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+                @if (analysis?.trends_summary?.geographic_insights?.underserved_markets?.length) {
+                  <div>
+                    <p class="text-xs text-slate-400 mb-1">Underserved Markets:</p>
+                    <div class="flex flex-wrap gap-1">
+                      @for (market of (analysis?.trends_summary?.geographic_insights?.underserved_markets || []); track market) {
+                        <span class="px-2 py-0.5 bg-slate-700 text-slate-300 rounded text-xs">{{ market }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            } @else {
+              <p class="text-sm text-slate-500">No geographic data available</p>
+            }
+          </div>
+        </div>
+      </section>
+
+      <!-- Conversion Analysis -->
+      <section class="mb-6">
+        <h2 class="section-header">Conversion Analysis</h2>
+        <div class="card">
+          @if (analysis?.conversion_analysis) {
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div class="text-center">
+                <p class="text-3xl font-bold text-green-400">{{ analysis?.conversion_analysis?.overall_rate | number:'1.1-1' }}%</p>
+                <p class="text-sm text-slate-400 mt-1">Overall Conversion Rate</p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-400 mb-1">Best Performing</p>
+                <p class="text-lg font-medium text-green-400">{{ analysis?.conversion_analysis?.best_performing_segment }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-400 mb-1">Needs Improvement</p>
+                <p class="text-lg font-medium text-amber-400">{{ analysis?.conversion_analysis?.worst_performing_segment }}</p>
+              </div>
+            </div>
+            @if (analysis?.conversion_analysis?.improvement_opportunities?.length) {
+              <div class="mt-6 pt-6 border-t border-slate-700">
+                <h4 class="text-sm font-medium text-slate-100 mb-3">Improvement Opportunities</h4>
+                <ul class="space-y-2">
+                  @for (opp of (analysis?.conversion_analysis?.improvement_opportunities || []); track opp) {
+                    <li class="flex items-start gap-2 text-sm text-slate-400">
+                      <svg class="w-4 h-4 text-indigo-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                      </svg>
+                      {{ opp }}
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          } @else {
+            <p class="text-sm text-slate-500">No conversion data available</p>
+          }
+        </div>
+      </section>
+
+      <!-- Highest Converting Cases -->
+      @if (analysis?.trends_summary?.highest_converting_cases?.length) {
+        <section class="mb-6">
+          <h2 class="section-header">Highest Converting Case Types</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            @for (caseType of (analysis?.trends_summary?.highest_converting_cases || []); track caseType.type) {
+              <div class="card">
+                <h4 class="text-sm font-medium text-slate-100 mb-2">{{ caseType.type }}</h4>
+                <div class="flex items-center gap-4 text-sm mb-2">
+                  <span class="text-green-400">{{ caseType.conversion_rate | number:'1.0-0' }}% conv</span>
+                  <span class="text-slate-400">${{ caseType.avg_revenue | number:'1.0-0' }} avg</span>
+                </div>
+                <p class="text-xs text-slate-500">{{ caseType.insight }}</p>
+              </div>
+            }
+          </div>
+        </section>
+      }
+    }
+
+    <!-- Product Insights Tab -->
+    @if (activeTab === 'insights') {
+      <!-- Feature Suggestions -->
+      <section class="mb-6">
+        <h2 class="section-header">Feature Suggestions</h2>
+        @if (getFeatureSuggestions().length === 0) {
+          <div class="card">
+            <p class="text-sm text-slate-500">No feature suggestions available</p>
+          </div>
+        } @else {
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            @for (feature of getFeatureSuggestions(); track feature.feature) {
+              <div class="card">
+                <div class="flex items-start justify-between mb-2">
+                  <h4 class="text-sm font-medium text-slate-100">{{ feature.feature }}</h4>
+                  <span class="px-2 py-0.5 rounded text-xs font-medium"
+                        [class]="getPriorityBgColor(feature.priority)"
+                        [class.text-red-400]="feature.priority === 'high'"
+                        [class.text-amber-400]="feature.priority === 'medium'"
+                        [class.text-green-400]="feature.priority === 'low'">
+                    {{ feature.priority }}
+                  </span>
+                </div>
+                <p class="text-sm text-slate-400 mb-2">{{ feature.rationale }}</p>
+                <p class="text-xs text-green-400">Expected: {{ feature.expected_impact }}</p>
+              </div>
+            }
+          </div>
+        }
+      </section>
+
+      <!-- Product Research Insights -->
+      @if (analysis?.product_research_insights) {
+        <section class="mb-6">
+          <h2 class="section-header">Product Research Insights</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Customer Pain Points -->
+            <div class="card">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <h4 class="text-sm font-medium text-slate-100">Customer Pain Points</h4>
+              </div>
+              @if (analysis?.product_research_insights?.customer_pain_points?.length) {
+                <ul class="space-y-2">
+                  @for (pain of (analysis?.product_research_insights?.customer_pain_points || []); track pain) {
+                    <li class="text-sm text-slate-400 flex items-start gap-2">
+                      <span class="text-red-400 mt-1">-</span>
+                      {{ pain }}
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="text-sm text-slate-500">No pain points identified</p>
+              }
+            </div>
+
+            <!-- Unmet Needs -->
+            <div class="card">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                </div>
+                <h4 class="text-sm font-medium text-slate-100">Unmet Needs</h4>
+              </div>
+              @if (analysis?.product_research_insights?.unmet_needs?.length) {
+                <ul class="space-y-2">
+                  @for (need of (analysis?.product_research_insights?.unmet_needs || []); track need) {
+                    <li class="text-sm text-slate-400 flex items-start gap-2">
+                      <span class="text-purple-400 mt-1">-</span>
+                      {{ need }}
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="text-sm text-slate-500">No unmet needs identified</p>
+              }
+            </div>
+
+            <!-- Content Opportunities -->
+            <div class="card">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </div>
+                <h4 class="text-sm font-medium text-slate-100">Content Opportunities</h4>
+              </div>
+              @if (analysis?.product_research_insights?.content_opportunities?.length) {
+                <ul class="space-y-2">
+                  @for (content of (analysis?.product_research_insights?.content_opportunities || []); track content) {
+                    <li class="text-sm text-slate-400 flex items-start gap-2">
+                      <span class="text-blue-400 mt-1">-</span>
+                      {{ content }}
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="text-sm text-slate-500">No content opportunities identified</p>
+              }
+            </div>
+
+            <!-- Partnership Opportunities -->
+            <div class="card">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                <h4 class="text-sm font-medium text-slate-100">Partnership Opportunities</h4>
+              </div>
+              @if (analysis?.product_research_insights?.partnership_opportunities?.length) {
+                <ul class="space-y-2">
+                  @for (partner of (analysis?.product_research_insights?.partnership_opportunities || []); track partner) {
+                    <li class="text-sm text-slate-400 flex items-start gap-2">
+                      <span class="text-green-400 mt-1">-</span>
+                      {{ partner }}
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="text-sm text-slate-500">No partnership opportunities identified</p>
+              }
+            </div>
+          </div>
+        </section>
+      }
+    }
+
+    <!-- Recommendations Tab -->
+    @if (activeTab === 'recommendations') {
+      <!-- Strategic Recommendations by Category -->
+      <section class="mb-6">
+        <h2 class="section-header">Strategic Recommendations</h2>
+        @if (getStrategicRecommendations().length === 0) {
+          <div class="card">
+            <p class="text-sm text-slate-500">No recommendations available</p>
+          </div>
+        } @else {
+          <div class="space-y-6">
+            <!-- Marketing Recommendations -->
+            @if (getRecommendationsByCategory('marketing').length > 0) {
+              <div class="card">
+                <div class="flex items-center gap-2 mb-4">
+                  <span class="text-lg">{{ getCategoryIcon('marketing') }}</span>
+                  <h3 class="text-sm font-medium text-slate-100">Marketing</h3>
+                </div>
+                <div class="space-y-4">
+                  @for (rec of getRecommendationsByCategory('marketing'); track rec.recommendation; let i = $index) {
+                    <div class="flex items-start gap-3">
+                      <span class="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 text-sm font-medium flex items-center justify-center">{{ i + 1 }}</span>
+                      <div>
+                        <p class="text-sm text-slate-300">{{ rec.recommendation }}</p>
+                        <div class="flex items-center gap-2 mt-1">
+                          <span class="px-2 py-0.5 rounded text-xs"
+                                [class]="getPriorityBgColor(rec.priority)"
+                                [class.text-red-400]="rec.priority === 'high'"
+                                [class.text-amber-400]="rec.priority === 'medium'"
+                                [class.text-green-400]="rec.priority === 'low'">
+                            {{ rec.priority }}
+                          </span>
+                          <span class="text-xs text-slate-500">{{ rec.expected_outcome }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Product Recommendations -->
+            @if (getRecommendationsByCategory('product').length > 0) {
+              <div class="card">
+                <div class="flex items-center gap-2 mb-4">
+                  <span class="text-lg">{{ getCategoryIcon('product') }}</span>
+                  <h3 class="text-sm font-medium text-slate-100">Product</h3>
+                </div>
+                <div class="space-y-4">
+                  @for (rec of getRecommendationsByCategory('product'); track rec.recommendation; let i = $index) {
+                    <div class="flex items-start gap-3">
+                      <span class="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 text-sm font-medium flex items-center justify-center">{{ i + 1 }}</span>
+                      <div>
+                        <p class="text-sm text-slate-300">{{ rec.recommendation }}</p>
+                        <div class="flex items-center gap-2 mt-1">
+                          <span class="px-2 py-0.5 rounded text-xs"
+                                [class]="getPriorityBgColor(rec.priority)"
+                                [class.text-red-400]="rec.priority === 'high'"
+                                [class.text-amber-400]="rec.priority === 'medium'"
+                                [class.text-green-400]="rec.priority === 'low'">
+                            {{ rec.priority }}
+                          </span>
+                          <span class="text-xs text-slate-500">{{ rec.expected_outcome }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Content Recommendations -->
+            @if (getRecommendationsByCategory('content').length > 0) {
+              <div class="card">
+                <div class="flex items-center gap-2 mb-4">
+                  <span class="text-lg">{{ getCategoryIcon('content') }}</span>
+                  <h3 class="text-sm font-medium text-slate-100">Content</h3>
+                </div>
+                <div class="space-y-4">
+                  @for (rec of getRecommendationsByCategory('content'); track rec.recommendation; let i = $index) {
+                    <div class="flex items-start gap-3">
+                      <span class="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 text-sm font-medium flex items-center justify-center">{{ i + 1 }}</span>
+                      <div>
+                        <p class="text-sm text-slate-300">{{ rec.recommendation }}</p>
+                        <div class="flex items-center gap-2 mt-1">
+                          <span class="px-2 py-0.5 rounded text-xs"
+                                [class]="getPriorityBgColor(rec.priority)"
+                                [class.text-red-400]="rec.priority === 'high'"
+                                [class.text-amber-400]="rec.priority === 'medium'"
+                                [class.text-green-400]="rec.priority === 'low'">
+                            {{ rec.priority }}
+                          </span>
+                          <span class="text-xs text-slate-500">{{ rec.expected_outcome }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- Operations Recommendations -->
+            @if (getRecommendationsByCategory('operations').length > 0) {
+              <div class="card">
+                <div class="flex items-center gap-2 mb-4">
+                  <span class="text-lg">{{ getCategoryIcon('operations') }}</span>
+                  <h3 class="text-sm font-medium text-slate-100">Operations</h3>
+                </div>
+                <div class="space-y-4">
+                  @for (rec of getRecommendationsByCategory('operations'); track rec.recommendation; let i = $index) {
+                    <div class="flex items-start gap-3">
+                      <span class="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-500/20 text-indigo-400 text-sm font-medium flex items-center justify-center">{{ i + 1 }}</span>
+                      <div>
+                        <p class="text-sm text-slate-300">{{ rec.recommendation }}</p>
+                        <div class="flex items-center gap-2 mt-1">
+                          <span class="px-2 py-0.5 rounded text-xs"
+                                [class]="getPriorityBgColor(rec.priority)"
+                                [class.text-red-400]="rec.priority === 'high'"
+                                [class.text-amber-400]="rec.priority === 'medium'"
+                                [class.text-green-400]="rec.priority === 'low'">
+                            {{ rec.priority }}
+                          </span>
+                          <span class="text-xs text-slate-500">{{ rec.expected_outcome }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </section>
+    }
+
+    <!-- Footer Info -->
+    <div class="card mt-6">
+      <div class="flex items-center justify-between text-xs text-slate-500">
+        <span>Analysis based on {{ scorecard.cases_analyzed }} cases and {{ scorecard.news_articles_referenced }} news articles</span>
+        <span>Generated {{ formatDate(scorecard.analysis_date) }}</span>
+      </div>
+    </div>
+  }
+</div>

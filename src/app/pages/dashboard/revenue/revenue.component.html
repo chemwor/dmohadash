@@ -1,0 +1,482 @@
+<!-- Header -->
+<header class="bg-slate-800 border-b border-slate-700 sticky top-14 lg:top-0 z-10">
+  <div class="px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-14 md:h-16">
+      <div class="min-w-0">
+        <h1 class="text-lg md:text-xl font-semibold text-slate-100 truncate">Revenue & Costs</h1>
+        <p class="text-xs md:text-sm text-slate-400 hidden sm:block">Stripe transactions & API costs</p>
+      </div>
+
+      <div class="flex items-center space-x-2 md:space-x-4 flex-shrink-0">
+        @if (openaiUsageData?.dailySpendAlert) {
+          <span class="px-2 py-0.5 md:px-3 md:py-1 bg-red-500/20 border border-red-500/50 rounded-full text-red-400 text-xs md:text-sm font-medium animate-pulse">
+            Alert!
+          </span>
+        }
+        @if (lastRefreshed) {
+          <span class="text-xs text-slate-500 hidden sm:inline">
+            {{ lastRefreshed | date:'shortTime' }}
+          </span>
+        }
+        <button
+          (click)="refreshAll()"
+          [disabled]="isRefreshing"
+          class="btn-secondary flex items-center"
+        >
+          <svg
+            class="w-4 h-4 md:mr-2"
+            [class.animate-spin]="isRefreshing"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span class="hidden md:inline">{{ isRefreshing ? 'Refreshing...' : 'Refresh' }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Content -->
+<div class="p-6 lg:p-8">
+  <!-- Period Selector -->
+  <div class="mb-6">
+    <div class="flex items-center space-x-2">
+      <span class="text-sm text-slate-400">Period:</span>
+      <div class="flex bg-slate-800 rounded-lg p-1">
+        @for (period of periods; track period.value) {
+          <button
+            (click)="setPeriod(period.value)"
+            [class]="selectedPeriod === period.value
+              ? 'px-4 py-2 text-sm font-medium rounded-md bg-indigo-500 text-white'
+              : 'px-4 py-2 text-sm font-medium rounded-md text-slate-400 hover:text-slate-100'"
+          >
+            {{ period.label }}
+          </button>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Revenue Summary Cards -->
+  <section class="mb-8">
+    <h2 class="section-header">Revenue Summary</h2>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <app-metric-card
+        title="Revenue"
+        [value]="stripeData?.revenue || 0"
+        prefix="$"
+        [subtitle]="selectedPeriod === 'today' ? 'Today' : selectedPeriod === 'week' ? 'This Week' : 'This Month'"
+        [loading]="loadingStates.stripe"
+        [error]="errors.stripe"
+      ></app-metric-card>
+
+      <app-metric-card
+        title="Transactions"
+        [value]="stripeData?.transactions || 0"
+        [subtitle]="selectedPeriod === 'today' ? 'Today' : selectedPeriod === 'week' ? 'This Week' : 'This Month'"
+        [loading]="loadingStates.stripe"
+      ></app-metric-card>
+
+      <app-metric-card
+        title="Net Revenue"
+        [value]="getNetRevenue()"
+        prefix="$"
+        subtitle="After refunds"
+        [loading]="loadingStates.stripe"
+        [trend]="getNetRevenue() > 0 ? 'up' : 'down'"
+      ></app-metric-card>
+
+      <app-metric-card
+        title="Avg Transaction"
+        [value]="getAvgTransactionValue()"
+        prefix="$"
+        subtitle="Per transaction"
+        [loading]="loadingStates.stripe"
+      ></app-metric-card>
+    </div>
+  </section>
+
+  <!-- Additional Revenue Metrics -->
+  <section class="mb-8">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="card">
+        @if (loadingStates.stripe) {
+          <app-loading-skeleton height="60px"></app-loading-skeleton>
+        } @else {
+          <p class="text-xs text-slate-400 mb-1">Refund Rate</p>
+          <p class="text-2xl font-bold" [class]="getRefundRate() < 5 ? 'text-green-400' : getRefundRate() < 10 ? 'text-yellow-400' : 'text-red-400'">
+            {{ getRefundRate() | number:'1.1-1' }}%
+          </p>
+          <p class="text-xs text-slate-500 mt-1">{{ stripeData?.refunds?.count || 0 }} of {{ stripeData?.transactions || 0 }}</p>
+        }
+      </div>
+
+      <div class="card">
+        @if (loadingStates.stripe || loadingStates.openai) {
+          <app-loading-skeleton height="60px"></app-loading-skeleton>
+        } @else {
+          <p class="text-xs text-slate-400 mb-1">Gross Profit</p>
+          <p class="text-2xl font-bold" [class]="getGrossProfit() > 0 ? 'text-green-400' : 'text-red-400'">
+            ${{ getGrossProfit() | number:'1.2-2' }}
+          </p>
+          <p class="text-xs text-slate-500 mt-1">Revenue - API Costs</p>
+        }
+      </div>
+
+      <div class="card">
+        @if (loadingStates.stripe || loadingStates.openai) {
+          <app-loading-skeleton height="60px"></app-loading-skeleton>
+        } @else {
+          <p class="text-xs text-slate-400 mb-1">Gross Margin</p>
+          <p class="text-2xl font-bold" [class]="getGrossProfitMargin() > 70 ? 'text-green-400' : getGrossProfitMargin() > 50 ? 'text-yellow-400' : 'text-red-400'">
+            {{ getGrossProfitMargin() | number:'1.1-1' }}%
+          </p>
+          <p class="text-xs text-slate-500 mt-1">Profit / Revenue</p>
+        }
+      </div>
+
+      <div class="card">
+        @if (loadingStates.stripe) {
+          <app-loading-skeleton height="60px"></app-loading-skeleton>
+        } @else {
+          <p class="text-xs text-slate-400 mb-1">MRR</p>
+          <p class="text-2xl font-bold text-indigo-400">
+            ${{ stripeData?.mrr || 0 | number:'1.2-2' }}
+          </p>
+          <p class="text-xs text-slate-500 mt-1">Monthly Recurring</p>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Two Column Layout -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+    <!-- Recent Transactions -->
+    <section>
+      <h2 class="section-header">Recent Transactions</h2>
+      <div class="card overflow-hidden">
+        @if (loadingStates.stripe) {
+          <div class="space-y-3">
+            @for (i of [1, 2, 3, 4, 5]; track i) {
+              <app-loading-skeleton height="40px"></app-loading-skeleton>
+            }
+          </div>
+        } @else if (errors.stripe) {
+          <div class="text-center py-4">
+            <p class="text-red-500 mb-2">{{ errors.stripe }}</p>
+            <button (click)="loadStripeData()" class="text-indigo-400 hover:text-indigo-300 underline text-sm">Retry</button>
+          </div>
+        } @else if (stripeData && stripeData.recentTransactions && stripeData.recentTransactions.length > 0) {
+          <!-- Mobile Card Layout -->
+          <div class="lg:hidden space-y-3">
+            @for (tx of stripeData!.recentTransactions; track tx.id) {
+              <div class="bg-slate-700/30 rounded-lg p-3 border border-slate-700/50">
+                <div class="flex items-start justify-between">
+                  <div class="min-w-0 flex-1">
+                    <p class="text-sm font-medium text-slate-100 truncate">{{ tx.name || 'N/A' }}</p>
+                    @if (tx.email) {
+                      <p class="text-xs text-slate-500 truncate">{{ tx.email }}</p>
+                    }
+                    <p class="text-xs text-slate-400 mt-1">{{ tx.created | date:'short' }}</p>
+                  </div>
+                  <span class="text-green-400 font-bold ml-2">${{ tx.amount | number:'1.2-2' }}</span>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Desktop Table Layout -->
+          <div class="hidden lg:block overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead>
+                <tr class="text-slate-400 text-left border-b border-slate-700">
+                  <th class="pb-3 font-medium">Date</th>
+                  <th class="pb-3 font-medium">Customer</th>
+                  <th class="pb-3 font-medium text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (tx of stripeData!.recentTransactions; track tx.id) {
+                  <tr class="border-t border-slate-700/50">
+                    <td class="py-3 text-slate-400 whitespace-nowrap">{{ tx.created | date:'short' }}</td>
+                    <td class="py-3">
+                      <div class="text-slate-100">{{ tx.name || 'N/A' }}</div>
+                      @if (tx.email) {
+                        <div class="text-xs text-slate-500">{{ tx.email }}</div>
+                      }
+                    </td>
+                    <td class="py-3 text-right text-green-400 font-medium">${{ tx.amount | number:'1.2-2' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <p class="text-slate-500 text-center py-8">No recent transactions</p>
+        }
+      </div>
+    </section>
+
+    <!-- API Cost Summary -->
+    <section>
+      <h2 class="section-header">API Cost Tracker (OpenAI)</h2>
+      <div class="card">
+        @if (loadingStates.openai) {
+          <div class="space-y-4">
+            @for (i of [1, 2, 3, 4]; track i) {
+              <app-loading-skeleton height="24px"></app-loading-skeleton>
+            }
+          </div>
+        } @else if (errors.openai) {
+          <div class="text-center py-4">
+            <p class="text-red-500 mb-2 text-sm">{{ errors.openai }}</p>
+            <button (click)="loadOpenAIUsageData(true)" class="text-indigo-400 hover:text-indigo-300 underline text-sm">Retry</button>
+          </div>
+        } @else if (openaiUsageData?.isMockData) {
+          <div class="text-center py-8">
+            <svg class="w-12 h-12 mx-auto text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+            </svg>
+            <p class="text-slate-400 mb-2">OpenAI not connected</p>
+            <p class="text-xs text-slate-500">Add OPENAI_ADMIN_KEY to track costs</p>
+          </div>
+        } @else {
+          <div class="space-y-4">
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Total Spend (30 days)</span>
+              <span class="text-2xl font-bold text-slate-100">${{ openaiUsageData?.totalCost | number:'1.2-2' }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Today's Spend</span>
+              <span class="text-xl font-semibold" [class]="openaiUsageData?.dailySpendAlert ? 'text-red-400' : 'text-slate-100'">
+                ${{ openaiUsageData?.todayCost | number:'1.2-2' }}
+              </span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Total Requests</span>
+              <span class="text-xl font-semibold text-slate-100">{{ openaiUsageData?.totalRequests | number }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Avg Cost/Request</span>
+              <span class="text-lg text-slate-100">${{ openaiUsageData?.avgCostPerRequest | number:'1.4-4' }}</span>
+            </div>
+          </div>
+
+          @if (openaiUsageData?.dailySpendAlert) {
+            <div class="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+              <p class="text-sm text-red-400">Today's spend exceeds ${{ openaiUsageData?.dailySpendThreshold }} threshold</p>
+            </div>
+          }
+        }
+      </div>
+    </section>
+  </div>
+
+  <!-- Profitability Analysis -->
+  <section class="mb-8">
+    <h2 class="section-header">Profitability Analysis</h2>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Price vs Cost -->
+      <div class="card">
+        <h3 class="text-sm font-medium text-slate-300 mb-4">Cost per Purchase</h3>
+        @if (loadingStates.openai) {
+          <div class="space-y-4">
+            @for (i of [1, 2, 3]; track i) {
+              <app-loading-skeleton height="32px"></app-loading-skeleton>
+            }
+          </div>
+        } @else if (!openaiUsageData?.isMockData && !errors.openai) {
+          <div class="space-y-4">
+            <div class="p-4 bg-slate-700/50 rounded-lg">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-slate-400">Price per Purchase</span>
+                <span class="text-xl font-bold text-green-400">${{ openaiUsageData?.pricePerPurchase }}</span>
+              </div>
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-slate-400">API Cost per Purchase</span>
+                <span class="text-xl font-bold text-amber-400">${{ openaiUsageData?.costPerPurchase | number:'1.2-2' }}</span>
+              </div>
+              <div class="border-t border-slate-600 pt-2 mt-2">
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-300 font-medium">Profit per Purchase</span>
+                  <span class="text-xl font-bold" [class]="(openaiUsageData?.profitPerPurchase || 0) >= 0 ? 'text-green-400' : 'text-red-400'">
+                    ${{ openaiUsageData?.profitPerPurchase | number:'1.2-2' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="text-center text-xs text-slate-500">
+              Based on {{ openaiUsageData?.purchaseCount }} purchases in last 30 days
+            </div>
+          </div>
+        } @else {
+          <div class="flex items-center justify-center h-32 text-slate-500">No data available</div>
+        }
+      </div>
+
+      <!-- Profit Margin -->
+      <div class="card">
+        <h3 class="text-sm font-medium text-slate-300 mb-4">Profit Margin</h3>
+        @if (loadingStates.openai) {
+          <div class="flex items-center justify-center h-32">
+            <app-loading-skeleton height="100px" width="100px" class="rounded-full"></app-loading-skeleton>
+          </div>
+        } @else if (!openaiUsageData?.isMockData && !errors.openai) {
+          <div class="flex flex-col items-center justify-center">
+            <div class="relative w-24 h-24 md:w-32 md:h-32 mb-4">
+              <svg class="w-24 h-24 md:w-32 md:h-32 transform -rotate-90" viewBox="0 0 36 36">
+                <path class="text-slate-700" stroke="currentColor" stroke-width="3" fill="none"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                <path
+                  [class]="(openaiUsageData?.profitMargin || 0) >= 70 ? 'text-green-400' : (openaiUsageData?.profitMargin || 0) >= 50 ? 'text-yellow-400' : 'text-red-400'"
+                  stroke="currentColor" stroke-width="3" stroke-linecap="round" fill="none"
+                  [attr.stroke-dasharray]="(openaiUsageData?.profitMargin || 0) + ', 100'"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+              </svg>
+              <div class="absolute inset-0 flex items-center justify-center">
+                <span class="text-2xl md:text-3xl font-bold" [class]="(openaiUsageData?.profitMargin || 0) >= 70 ? 'text-green-400' : (openaiUsageData?.profitMargin || 0) >= 50 ? 'text-yellow-400' : 'text-red-400'">
+                  {{ openaiUsageData?.profitMargin | number:'1.0-0' }}%
+                </span>
+              </div>
+            </div>
+            <p class="text-xs md:text-sm text-slate-400">API Cost Profit Margin</p>
+          </div>
+        } @else {
+          <div class="flex items-center justify-center h-32 text-slate-500">No data available</div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Token Usage Breakdown -->
+  <section class="mb-8">
+    <h2 class="section-header">Token Usage Efficiency</h2>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="card">
+        @if (loadingStates.openai) {
+          <app-loading-skeleton height="80px"></app-loading-skeleton>
+        } @else if (!openaiUsageData?.isMockData && !errors.openai) {
+          <h3 class="text-sm font-medium text-slate-300 mb-3">Token Distribution</h3>
+          <div class="space-y-2">
+            <div class="flex justify-between text-sm">
+              <span class="text-slate-400">Input Tokens</span>
+              <span class="text-slate-100">{{ openaiUsageData?.totalInputTokens | number }}</span>
+            </div>
+            <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+              <div class="h-full bg-blue-500 rounded-full" [style.width.%]="getInputTokenPercentage()"></div>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-slate-400">Output Tokens</span>
+              <span class="text-slate-100">{{ openaiUsageData?.totalOutputTokens | number }}</span>
+            </div>
+            <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+              <div class="h-full bg-indigo-500 rounded-full" [style.width.%]="100 - getInputTokenPercentage()"></div>
+            </div>
+          </div>
+        } @else {
+          <div class="flex items-center justify-center h-24 text-slate-500">No data</div>
+        }
+      </div>
+
+      <div class="card">
+        @if (loadingStates.openai) {
+          <app-loading-skeleton height="80px"></app-loading-skeleton>
+        } @else if (!openaiUsageData?.isMockData && !errors.openai) {
+          <h3 class="text-sm font-medium text-slate-300 mb-3">Cost Efficiency</h3>
+          <div class="space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Cost per 1K Tokens</span>
+              <span class="text-xl font-bold text-slate-100">${{ getCostPer1kTokens() | number:'1.4-4' }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Avg Cost per Request</span>
+              <span class="text-xl font-bold text-slate-100">${{ openaiUsageData?.avgCostPerRequest | number:'1.4-4' }}</span>
+            </div>
+          </div>
+        } @else {
+          <div class="flex items-center justify-center h-24 text-slate-500">No data</div>
+        }
+      </div>
+
+      <div class="card">
+        @if (loadingStates.openai) {
+          <app-loading-skeleton height="80px"></app-loading-skeleton>
+        } @else if (!openaiUsageData?.isMockData && !errors.openai) {
+          <h3 class="text-sm font-medium text-slate-300 mb-3">Request Summary</h3>
+          <div class="space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Total Requests</span>
+              <span class="text-xl font-bold text-slate-100">{{ openaiUsageData?.totalRequests | number }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-400">Tokens per Request</span>
+              <span class="text-xl font-bold text-slate-100">
+                {{ (openaiUsageData?.totalRequests || 0) > 0 ? (getTotalTokens() / (openaiUsageData?.totalRequests || 1) | number:'1.0-0') : 'N/A' }}
+              </span>
+            </div>
+          </div>
+        } @else {
+          <div class="flex items-center justify-center h-24 text-slate-500">No data</div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Daily API Spend -->
+  <section>
+    <h2 class="section-header">Daily API Spend (Last 7 Days)</h2>
+    <div class="card">
+      @if (loadingStates.openai) {
+        <div class="space-y-2">
+          @for (i of [1, 2, 3, 4, 5, 6, 7]; track i) {
+            <app-loading-skeleton height="24px"></app-loading-skeleton>
+          }
+        </div>
+      } @else if (!openaiUsageData?.isMockData && !errors.openai && openaiUsageData?.dailyData?.length) {
+        <div class="space-y-2">
+          @for (day of openaiUsageData?.dailyData; track day.date) {
+            <div class="flex items-center gap-3">
+              <span class="text-sm text-slate-500 w-20">{{ day.date | date:'EEE, MMM d' }}</span>
+              <div class="flex-1 h-8 bg-slate-700 rounded overflow-hidden relative">
+                @if ((openaiUsageData?.totalCost || 0) > 0) {
+                  <div
+                    class="h-full bg-indigo-500 rounded transition-all duration-300"
+                    [style.width.%]="(day.cost / (openaiUsageData?.totalCost || 1)) * 100 * 7"
+                  ></div>
+                }
+                <span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-300">
+                  ${{ day.cost | number:'1.2-2' }} ({{ day.requests }} requests)
+                </span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="mt-6 pt-4 border-t border-slate-700 grid grid-cols-2 lg:grid-cols-4 gap-4 text-center">
+          <div>
+            <p class="text-xs text-slate-400">Total Input Tokens</p>
+            <p class="text-lg font-medium text-slate-100">{{ openaiUsageData?.totalInputTokens | number }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400">Total Output Tokens</p>
+            <p class="text-lg font-medium text-slate-100">{{ openaiUsageData?.totalOutputTokens | number }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400">Total Tokens</p>
+            <p class="text-lg font-medium text-slate-100">{{ (openaiUsageData?.totalInputTokens || 0) + (openaiUsageData?.totalOutputTokens || 0) | number }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-slate-400">Total Requests</p>
+            <p class="text-lg font-medium text-slate-100">{{ openaiUsageData?.totalRequests | number }}</p>
+          </div>
+        </div>
+      } @else {
+        <div class="flex items-center justify-center h-32 text-slate-500">No usage data available</div>
+      }
+    </div>
+  </section>
+</div>
