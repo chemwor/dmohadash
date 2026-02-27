@@ -35,7 +35,7 @@ export interface KlaviyoData {
   providedIn: 'root'
 })
 export class KlaviyoService {
-  private readonly apiUrl = '/api/klaviyo';
+  private readonly apiUrl = '/api/dashboard/klaviyo';
 
   constructor(private http: HttpClient) {}
 

@@ -120,7 +120,7 @@ interface JobResponse {
   providedIn: 'root'
 })
 export class AdSuggestionsService {
-  private readonly apiUrl = '/api/ad-suggestions';
+  private readonly apiUrl = '/api/dashboard/ad-suggestions';
   private pollingSubscription: Subscription | null = null;
 
   constructor(private http: HttpClient) {}

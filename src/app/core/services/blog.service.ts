@@ -61,8 +61,8 @@ export interface GenerateBlogResponse {
   providedIn: 'root'
 })
 export class BlogService {
-  private readonly apiUrl = '/api/blog-generator';
-  private readonly backgroundApiUrl = '/api/blog-generator-background';
+  private readonly apiUrl = '/api/dashboard/blog-generator';
+  private readonly backgroundApiUrl = '/api/dashboard/blog-generator';
 
   constructor(private http: HttpClient) {}
 

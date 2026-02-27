@@ -86,7 +86,7 @@ export type GoogleAdsPeriod = 'today' | 'week' | 'month' | 'all';
   providedIn: 'root'
 })
 export class GoogleAdsService {
-  private readonly apiUrl = '/api/google-ads';
+  private readonly apiUrl = '/api/dashboard/google-ads';
 
   constructor(private http: HttpClient) {}
 

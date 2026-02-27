@@ -58,7 +58,7 @@ export type ArticleAction = 'bookmark' | 'unbookmark' | 'dismiss' | 'undismiss' 
   providedIn: 'root'
 })
 export class HOANewsService {
-  private readonly apiUrl = '/api/hoa-news';
+  private readonly apiUrl = '/api/dashboard/hoa-news';
 
   constructor(private http: HttpClient) {}
 

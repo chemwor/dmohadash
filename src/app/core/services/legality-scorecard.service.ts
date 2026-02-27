@@ -158,7 +158,7 @@ export interface ScorecardResponse {
   providedIn: 'root'
 })
 export class LegalityScorecardService {
-  private readonly apiUrl = '/api/legality-scorecard';
+  private readonly apiUrl = '/api/dashboard/legality-scorecard';
 
   constructor(private http: HttpClient) {}
 

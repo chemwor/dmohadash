@@ -28,6 +28,14 @@
 [functions."ad-suggestions"]
   timeout = 120
 
+# Redirect dashboard API calls to Flask backend
+[[redirects]]
+  from = "/api/dashboard/*"
+  to = "https://dmhoa-246713e0bd92.herokuapp.com/api/dashboard/:splat"
+  status = 200
+  force = true
+
+# Keep Netlify functions for other /api/* routes (can be removed after full migration)
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"

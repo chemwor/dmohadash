@@ -51,7 +51,7 @@ export interface ClarityData {
   providedIn: 'root'
 })
 export class ClarityService {
-  private readonly apiUrl = '/api/clarity';
+  private readonly apiUrl = '/api/dashboard/clarity';
 
   constructor(private http: HttpClient) {}
 

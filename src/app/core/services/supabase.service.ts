@@ -70,7 +70,7 @@ export type SupabasePeriod = 'today' | 'week' | 'month' | 'all';
   providedIn: 'root'
 })
 export class SupabaseService {
-  private readonly apiUrl = '/api/supabase';
+  private readonly apiUrl = '/api/dashboard/supabase';
 
   constructor(private http: HttpClient) {}
 

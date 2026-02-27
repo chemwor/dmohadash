@@ -52,7 +52,7 @@ export interface LighthouseData {
   providedIn: 'root'
 })
 export class LighthouseService {
-  private readonly apiUrl = '/api/lighthouse';
+  private readonly apiUrl = '/api/dashboard/lighthouse';
 
   constructor(private http: HttpClient) {}
 

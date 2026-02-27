@@ -34,7 +34,7 @@ export type StripePeriod = 'today' | 'week' | 'month';
   providedIn: 'root'
 })
 export class StripeService {
-  private readonly apiUrl = '/api/stripe';
+  private readonly apiUrl = '/api/dashboard/stripe';
 
   constructor(private http: HttpClient) {}
 

@@ -65,7 +65,7 @@ export interface OpenAIUsageData {
   providedIn: 'root'
 })
 export class OpenAIUsageService {
-  private readonly apiUrl = '/api/openai-usage';
+  private readonly apiUrl = '/api/dashboard/openai-usage';
 
   constructor(private http: HttpClient) {}
 
