@@ -5,6 +5,7 @@ import { Subject, takeUntil } from 'rxjs';
 
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { HoaIntelService, HoaNewsArticle, HoaNewsResponse } from '../../../core/services/hoa-intel.service';
+import { HOANewsService } from '../../../core/services/hoa-news.service';
 
 type SortOption = 'newest' | 'oldest' | 'relevance';
 
@@ -40,10 +41,14 @@ export class HoaIntelComponent implements OnInit, OnDestroy {
     { value: '', label: 'All' },
     { value: 'new', label: 'Unreviewed' },
     { value: 'reviewed', label: 'Reviewed' },
+    { value: 'bookmarked', label: 'Bookmarked' },
     { value: 'archived', label: 'Archived' }
   ];
 
-  constructor(private hoaIntelService: HoaIntelService) {}
+  constructor(
+    private hoaIntelService: HoaIntelService,
+    private hoaNewsService: HOANewsService
+  ) {}
 
   ngOnInit(): void {
     this.loadArticles();
@@ -57,6 +62,24 @@ export class HoaIntelComponent implements OnInit, OnDestroy {
   loadArticles(): void {
     this.loading = true;
     this.error = '';
+
+    // Bookmarked filter uses the news service with bookmarked param
+    if (this.activeStatus === 'bookmarked') {
+      this.hoaNewsService.getData(false, { bookmarkedOnly: true })
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (data) => {
+            this.articles = data.articles as any[];
+            this.applySorting();
+            this.loading = false;
+          },
+          error: (err) => {
+            this.loading = false;
+            this.error = err.message || 'Failed to load articles';
+          }
+        });
+      return;
+    }
 
     this.hoaIntelService.getArticles(
       this.activeStatus || undefined,
@@ -223,11 +246,40 @@ export class HoaIntelComponent implements OnInit, OnDestroy {
     }
   }
 
+  toggleBookmark(article: HoaNewsArticle): void {
+    const newState = !(article as any).bookmarked;
+    this.hoaNewsService.bookmarkArticle(article.id, newState)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          if (result.success) {
+            (article as any).bookmarked = newState;
+          }
+        }
+      });
+  }
+
+  isBookmarked(article: HoaNewsArticle): boolean {
+    return !!(article as any).bookmarked;
+  }
+
+  isYouTube(article: HoaNewsArticle): boolean {
+    const url = this.getArticleUrl(article);
+    const title = (article.title || '').toLowerCase();
+    const source = (article.source || article.source_name || '').toLowerCase();
+    return url.includes('youtube.com') || url.includes('youtu.be') ||
+           title.includes('- youtube') || source.includes('youtube');
+  }
+
   get newCount(): number {
     return this.articles.filter(a => a.status === 'new').length;
   }
 
   get reviewedCount(): number {
     return this.articles.filter(a => a.status === 'reviewed').length;
+  }
+
+  get bookmarkedCount(): number {
+    return this.articles.filter(a => (a as any).bookmarked).length;
   }
 }

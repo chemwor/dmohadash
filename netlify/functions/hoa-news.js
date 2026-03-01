@@ -65,7 +65,11 @@ function extractSourceFromLink(link) {
 // Reduced queries for faster response
 const HOA_QUERIES = [
   'HOA homeowners association news',
-  'HOA legislation law',
+  'HOA legislation law 2026',
+  'homeowners association disputes fines',
+  'community association management',
+  'HOA reform homeowner rights',
+  'HOA homeowners association site:youtube.com',
 ];
 
 function categorizeArticle(title, description) {
