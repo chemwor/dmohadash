@@ -548,51 +548,83 @@
   <section class="mt-8">
     <h2 class="section-header">AI Campaign Analysis</h2>
 
-    <!-- Date Range Selector & Generate Button -->
+    <!-- Campaign & Date Range Selector -->
     <div class="card mb-6">
-      <div class="flex flex-col md:flex-row md:items-end gap-4">
-        <div class="flex-1">
-          <h3 class="text-sm font-medium text-slate-300 mb-3">Analysis Date Range</h3>
-          <div class="flex flex-col sm:flex-row gap-3">
-            <div class="flex-1">
-              <label class="block text-xs text-slate-400 mb-1">Start Date</label>
-              <input
-                type="date"
-                [(ngModel)]="analysisStartDate"
-                class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 text-sm focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-            <div class="flex-1">
-              <label class="block text-xs text-slate-400 mb-1">End Date</label>
-              <input
-                type="date"
-                [(ngModel)]="analysisEndDate"
-                class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 text-sm focus:outline-none focus:border-indigo-500"
-              />
-            </div>
+      <div class="flex flex-col gap-4">
+        <!-- Campaign Selector -->
+        <div>
+          <h3 class="text-sm font-medium text-slate-300 mb-3">Campaign Brief</h3>
+          <div class="flex-1">
+            <label class="block text-xs text-slate-400 mb-1">Campaign (optional)</label>
+            <select
+              [(ngModel)]="selectedCampaign"
+              (ngModelChange)="onCampaignSelected()"
+              class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 text-sm focus:outline-none focus:border-indigo-500"
+            >
+              <option value="">All Campaigns (general analysis)</option>
+              @for (campaign of getAvailableCampaigns(); track campaign.name) {
+                <option [value]="campaign.name">{{ campaign.name }}</option>
+              }
+            </select>
           </div>
-          <p class="text-xs text-slate-500 mt-2">
-            Analyzing {{ getAnalysisDays() }} days of data from Google Ads, Stripe, and Supabase
-          </p>
+          @if (selectedCampaign) {
+            <p class="text-xs text-indigo-400 mt-2 flex items-center">
+              <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Campaign brief mode: includes 6-month plan context and grades
+            </p>
+          }
         </div>
-        <div class="flex-shrink-0">
-          <button
-            (click)="loadSuggestions()"
-            [disabled]="loadingStates.suggestions"
-            class="btn-primary flex items-center w-full md:w-auto justify-center"
-          >
-            @if (loadingStates.suggestions) {
-              <svg class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Analyzing...
-            } @else {
-              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
-              Generate AI Brief
-            }
-          </button>
+
+        <!-- Date Range + Generate Button -->
+        <div class="flex flex-col md:flex-row md:items-end gap-4">
+          <div class="flex-1">
+            <h3 class="text-sm font-medium text-slate-300 mb-3">Analysis Date Range</h3>
+            <div class="flex flex-col sm:flex-row gap-3">
+              <div class="flex-1">
+                <label class="block text-xs text-slate-400 mb-1">Start Date</label>
+                <input
+                  type="date"
+                  [(ngModel)]="analysisStartDate"
+                  class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+              <div class="flex-1">
+                <label class="block text-xs text-slate-400 mb-1">End Date</label>
+                <input
+                  type="date"
+                  [(ngModel)]="analysisEndDate"
+                  class="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-100 text-sm focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+            <p class="text-xs text-slate-500 mt-2">
+              Analyzing {{ getAnalysisDays() }} days of data
+              @if (selectedCampaign) {
+                for "{{ selectedCampaign }}"
+              }
+            </p>
+          </div>
+          <div class="flex-shrink-0">
+            <button
+              (click)="loadSuggestions()"
+              [disabled]="loadingStates.suggestions"
+              class="btn-primary flex items-center w-full md:w-auto justify-center"
+            >
+              @if (loadingStates.suggestions) {
+                <svg class="w-4 h-4 mr-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Analyzing...
+              } @else {
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                </svg>
+                {{ selectedCampaign ? 'Generate Campaign Brief' : 'Generate AI Brief' }}
+              }
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -687,6 +719,85 @@
         </div>
       }
 
+      <!-- Campaign Brief (Plan-Aware) -->
+      @if (suggestionsData.campaignBrief) {
+        <div class="card mb-6 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border-cyan-500/30">
+          <div class="flex items-center mb-4">
+            <svg class="w-5 h-5 text-cyan-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <h3 class="text-sm font-medium text-slate-200">
+              Campaign Brief: {{ suggestionsData.campaignBrief.campaignName }}
+            </h3>
+          </div>
+
+          <!-- Trajectory Badge -->
+          <div class="flex items-center gap-3 mb-4">
+            <span class="text-xs font-medium px-3 py-1 rounded-full border"
+              [class]="suggestionsData.campaignBrief.trajectory === 'improving'
+                ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                : suggestionsData.campaignBrief.trajectory === 'declining'
+                  ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                  : 'bg-amber-500/20 text-amber-400 border-amber-500/30'">
+              {{ suggestionsData.campaignBrief.trajectory | uppercase }} TRAJECTORY
+            </span>
+          </div>
+
+          <!-- Brief Details -->
+          <div class="space-y-3">
+            <div class="p-3 bg-slate-800/50 rounded-lg">
+              <p class="text-xs text-slate-400 mb-1 font-medium">Plan Alignment</p>
+              <p class="text-sm text-slate-200">{{ suggestionsData.campaignBrief.planAlignment }}</p>
+            </div>
+            <div class="p-3 bg-slate-800/50 rounded-lg">
+              <p class="text-xs text-slate-400 mb-1 font-medium">Budget Assessment</p>
+              <p class="text-sm text-slate-200">{{ suggestionsData.campaignBrief.budgetAssessment }}</p>
+            </div>
+            <div class="p-3 bg-slate-800/50 rounded-lg">
+              <p class="text-xs text-slate-400 mb-1 font-medium">Grade Impact</p>
+              <p class="text-sm text-slate-200">{{ suggestionsData.campaignBrief.gradeImpact }}</p>
+            </div>
+            <div class="p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-lg">
+              <p class="text-xs text-indigo-400 mb-1 font-medium">Strategic Recommendation</p>
+              <p class="text-sm text-slate-200">{{ suggestionsData.campaignBrief.strategicRecommendation }}</p>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Plan Context Summary -->
+      @if (suggestionsData.planContext) {
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div class="card text-center">
+            <p class="text-xs text-slate-400 mb-1">Plan Month</p>
+            <p class="text-lg font-bold text-slate-100">{{ suggestionsData.planContext.current_month_name }}</p>
+            <p class="text-xs text-slate-500">{{ suggestionsData.planContext.current_theme }}</p>
+          </div>
+          <div class="card text-center">
+            <p class="text-xs text-slate-400 mb-1">Budget Plan vs Actual</p>
+            <p class="text-lg font-bold text-slate-100">
+              ${{ suggestionsData.planContext.budget_actual | number:'1.0-0' }} / ${{ suggestionsData.planContext.budget_planned | number:'1.0-0' }}
+            </p>
+            <p class="text-xs text-slate-500">{{ suggestionsData.planContext.days_since_start }} days in</p>
+          </div>
+          <div class="card text-center">
+            <p class="text-xs text-slate-400 mb-1">Plan ROAS</p>
+            <p class="text-lg font-bold" [class]="suggestionsData.planContext.roas >= 2 ? 'text-green-400' : suggestionsData.planContext.roas >= 1 ? 'text-amber-400' : 'text-red-400'">
+              {{ suggestionsData.planContext.roas | number:'1.2-2' }}x
+            </p>
+          </div>
+          <div class="card text-center">
+            <p class="text-xs text-slate-400 mb-1">Grades</p>
+            <div class="flex items-center justify-center gap-1 mt-1">
+              <span class="text-xs px-1.5 py-0.5 rounded" [class]="getGradeClass(suggestionsData.planContext.grades.traffic)">T:{{ suggestionsData.planContext.grades.traffic }}</span>
+              <span class="text-xs px-1.5 py-0.5 rounded" [class]="getGradeClass(suggestionsData.planContext.grades.ctr)">CTR:{{ suggestionsData.planContext.grades.ctr }}</span>
+              <span class="text-xs px-1.5 py-0.5 rounded" [class]="getGradeClass(suggestionsData.planContext.grades.revenue)">R:{{ suggestionsData.planContext.grades.revenue }}</span>
+              <span class="text-xs px-1.5 py-0.5 rounded" [class]="getGradeClass(suggestionsData.planContext.grades.roas)">ROAS:{{ suggestionsData.planContext.grades.roas }}</span>
+            </div>
+          </div>
+        </div>
+      }
+
       <!-- Negative Keywords Section (Priority) -->
       @if (suggestionsData.negativeKeywordSuggestions && suggestionsData.negativeKeywordSuggestions.length > 0) {
         <div class="card mb-6 bg-gradient-to-r from-red-500/10 to-orange-500/10 border-red-500/30">
@@ -745,7 +856,13 @@
               }
             </div>
           } @else {
-            <p class="text-slate-500 text-sm text-center py-4">No keyword suggestions</p>
+            <div class="text-center py-6">
+              <svg class="w-8 h-8 mx-auto mb-2 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p class="text-slate-500 text-sm">No keyword changes suggested</p>
+              <p class="text-slate-600 text-xs mt-1">Current keywords are performing well</p>
+            </div>
           }
         </div>
 
@@ -778,7 +895,13 @@
               }
             </div>
           } @else {
-            <p class="text-slate-500 text-sm text-center py-4">No ad copy suggestions</p>
+            <div class="text-center py-6">
+              <svg class="w-8 h-8 mx-auto mb-2 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p class="text-slate-500 text-sm">Your current ad copy looks good</p>
+              <p class="text-slate-600 text-xs mt-1">No changes suggested for this period</p>
+            </div>
           }
         </div>
 
@@ -811,7 +934,13 @@
               }
             </div>
           } @else {
-            <p class="text-slate-500 text-sm text-center py-4">No recommendations</p>
+            <div class="text-center py-6">
+              <svg class="w-8 h-8 mx-auto mb-2 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p class="text-slate-500 text-sm">No additional recommendations</p>
+              <p class="text-slate-600 text-xs mt-1">Your campaigns are performing well for this period</p>
+            </div>
           }
         </div>
       </div>
