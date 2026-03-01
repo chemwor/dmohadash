@@ -22,7 +22,7 @@ export class MarketingComponent implements OnInit, OnDestroy {
   googleAdsData: GoogleAdsData | null = null;
   suggestionsData: AdSuggestionsData | null = null;
 
-  selectedPeriod: GoogleAdsPeriod = 'week';
+  selectedPeriod: GoogleAdsPeriod = 'today';
   periods = [
     { value: 'today' as GoogleAdsPeriod, label: 'Today' },
     { value: 'week' as GoogleAdsPeriod, label: 'This Week' },

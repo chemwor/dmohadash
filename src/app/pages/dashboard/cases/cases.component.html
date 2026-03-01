@@ -400,6 +400,18 @@
           </div>
         }
 
+        <!-- Retry Feedback Messages -->
+        @if (retrySuccess) {
+          <div class="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-sm">
+            {{ retrySuccess }}
+          </div>
+        }
+        @if (retryError) {
+          <div class="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+            {{ retryError }}
+          </div>
+        }
+
         <div class="card">
           <!-- Mobile Card Layout -->
           <div class="lg:hidden space-y-3">
@@ -433,6 +445,29 @@
                     <span class="font-medium text-green-400">${{ caseItem.amount || 0 | number:'1.2-2' }}</span>
                   </div>
                 </div>
+                <!-- Retry Actions (mobile) -->
+                @if (caseItem.outputStatus !== 'ready') {
+                  <div class="mt-3 pt-3 border-t border-slate-600/50 flex items-center gap-3">
+                    <button
+                      (click)="retryCase(caseItem.token)"
+                      [disabled]="retryingToken === caseItem.token"
+                      class="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors disabled:opacity-50"
+                    >
+                      @if (retryingToken === caseItem.token) {
+                        <span class="flex items-center gap-1">
+                          <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                          Retrying...
+                        </span>
+                      } @else {
+                        Retry Analysis
+                      }
+                    </button>
+                    <label class="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer">
+                      <input type="checkbox" [(ngModel)]="retrySendEmail[caseItem.token]" class="rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-500 h-3.5 w-3.5">
+                      Send email
+                    </label>
+                  </div>
+                }
               </div>
             }
           </div>
@@ -448,6 +483,7 @@
                   <th class="pb-3 font-medium">Model</th>
                   <th class="pb-3 font-medium text-center">Output Status</th>
                   <th class="pb-3 font-medium text-right">Amount</th>
+                  <th class="pb-3 font-medium text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -466,6 +502,32 @@
                       </span>
                     </td>
                     <td class="py-3 text-right font-medium text-green-400">${{ caseItem.amount || 0 | number:'1.2-2' }}</td>
+                    <td class="py-3 text-center">
+                      @if (caseItem.outputStatus !== 'ready') {
+                        <div class="flex items-center justify-center gap-2">
+                          <button
+                            (click)="retryCase(caseItem.token)"
+                            [disabled]="retryingToken === caseItem.token"
+                            class="px-2.5 py-1 text-xs font-medium rounded-lg bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/30 transition-colors disabled:opacity-50"
+                          >
+                            @if (retryingToken === caseItem.token) {
+                              <span class="flex items-center gap-1">
+                                <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                                Retrying...
+                              </span>
+                            } @else {
+                              Retry
+                            }
+                          </button>
+                          <label class="flex items-center gap-1 text-xs text-slate-500 cursor-pointer" title="Send receipt email to user">
+                            <input type="checkbox" [(ngModel)]="retrySendEmail[caseItem.token]" class="rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-500 h-3 w-3">
+                            Email
+                          </label>
+                        </div>
+                      } @else {
+                        <span class="text-xs text-slate-500">—</span>
+                      }
+                    </td>
                   </tr>
                 }
               </tbody>

@@ -7,6 +7,16 @@ import { LoadingSkeletonComponent } from '../../../shared/components/loading-ske
 import { ChecklistsService } from '../../../core/services/checklists.service';
 import { ChecklistItem, ChecklistCategory, ChecklistStatus } from '../../../interfaces/dashboard.interfaces';
 
+interface MonthGroup {
+  month: number;
+  label: string;
+  dateLabel: string;
+  items: ChecklistItem[];
+  doneCount: number;
+  totalCount: number;
+  progressPct: number;
+}
+
 @Component({
   selector: 'app-checklists',
   standalone: true,
@@ -17,16 +27,19 @@ export class ChecklistsComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   items: ChecklistItem[] = [];
+  monthGroups: MonthGroup[] = [];
   loading = false;
   error = '';
   seeding = false;
 
   // Filters
-  filterMonth: string = '';
   filterCategory: string = '';
   filterStatus: string = '';
 
-  // Expanded item
+  // Collapsed months (collapsed by default, track which are open)
+  expandedMonths: Set<number> = new Set();
+
+  // Expanded item detail
   expandedId: string | null = null;
   notesBuffer: Record<string, string> = {};
 
@@ -43,15 +56,15 @@ export class ChecklistsComponent implements OnInit, OnDestroy {
     { value: 'legal', label: 'Legal' }
   ];
 
-  months: { value: string; label: string }[] = [
-    { value: '', label: 'All Months' },
-    { value: '1', label: 'Month 1' },
-    { value: '2', label: 'Month 2' },
-    { value: '3', label: 'Month 3' },
-    { value: '4', label: 'Month 4' },
-    { value: '5', label: 'Month 5' },
-    { value: '6', label: 'Month 6' }
-  ];
+  // Month labels aligned to the 6-month plan (March 2026 – August 2026)
+  private monthLabels: Record<number, { label: string; dateLabel: string }> = {
+    1: { label: 'Month 1', dateLabel: 'March 2026' },
+    2: { label: 'Month 2', dateLabel: 'April 2026' },
+    3: { label: 'Month 3', dateLabel: 'May 2026' },
+    4: { label: 'Month 4', dateLabel: 'June 2026' },
+    5: { label: 'Month 5', dateLabel: 'July 2026' },
+    6: { label: 'Month 6', dateLabel: 'August 2026' },
+  };
 
   constructor(private checklistsService: ChecklistsService) {}
 
@@ -71,13 +84,13 @@ export class ChecklistsComponent implements OnInit, OnDestroy {
     const filters: any = {};
     if (this.filterCategory) filters.category = this.filterCategory as ChecklistCategory;
     if (this.filterStatus) filters.status = this.filterStatus as ChecklistStatus;
-    if (this.filterMonth) filters.month = parseInt(this.filterMonth, 10);
 
     this.checklistsService.getAll(filters)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (data) => {
           this.items = data;
+          this.buildMonthGroups();
           this.loading = false;
         },
         error: (err) => {
@@ -87,19 +100,76 @@ export class ChecklistsComponent implements OnInit, OnDestroy {
       });
   }
 
+  private buildMonthGroups(): void {
+    const grouped: Record<number, ChecklistItem[]> = {};
+    for (const item of this.items) {
+      const m = item.month || 0;
+      if (!grouped[m]) grouped[m] = [];
+      grouped[m].push(item);
+    }
+
+    this.monthGroups = Object.keys(grouped)
+      .map(Number)
+      .filter(m => m > 0)
+      .sort((a, b) => a - b)
+      .map(m => {
+        const items = grouped[m];
+        const doneCount = items.filter(i => i.status === 'done').length;
+        return {
+          month: m,
+          label: this.monthLabels[m]?.label || `Month ${m}`,
+          dateLabel: this.monthLabels[m]?.dateLabel || '',
+          items,
+          doneCount,
+          totalCount: items.length,
+          progressPct: items.length > 0 ? (doneCount / items.length) * 100 : 0
+        };
+      });
+
+    // Add ungrouped items as "General" if any
+    if (grouped[0]?.length) {
+      const items = grouped[0];
+      const doneCount = items.filter(i => i.status === 'done').length;
+      this.monthGroups.push({
+        month: 0,
+        label: 'General',
+        dateLabel: 'Ongoing',
+        items,
+        doneCount,
+        totalCount: items.length,
+        progressPct: items.length > 0 ? (doneCount / items.length) * 100 : 0
+      });
+    }
+  }
+
   onFilterChange(): void {
     this.loadItems();
   }
 
-  toggleItem(item: ChecklistItem): void {
+  toggleMonth(month: number): void {
+    if (this.expandedMonths.has(month)) {
+      this.expandedMonths.delete(month);
+    } else {
+      this.expandedMonths.add(month);
+    }
+  }
+
+  isMonthExpanded(month: number): boolean {
+    return this.expandedMonths.has(month);
+  }
+
+  toggleItem(item: ChecklistItem, group: MonthGroup): void {
     if (!item.id) return;
     const newStatus: ChecklistStatus = item.status === 'done' ? 'pending' : 'done';
     this.checklistsService.update(item.id, { status: newStatus })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (updated) => {
-          const idx = this.items.findIndex(i => i.id === item.id);
-          if (idx !== -1) this.items[idx] = { ...this.items[idx], ...updated };
+          const idx = group.items.findIndex(i => i.id === item.id);
+          if (idx !== -1) group.items[idx] = { ...group.items[idx], ...updated };
+          // Recalc group stats
+          group.doneCount = group.items.filter(i => i.status === 'done').length;
+          group.progressPct = group.totalCount > 0 ? (group.doneCount / group.totalCount) * 100 : 0;
         }
       });
   }
@@ -167,5 +237,20 @@ export class ChecklistsComponent implements OnInit, OnDestroy {
       legal: 'bg-red-500/20 text-red-400'
     };
     return map[category] || 'bg-slate-500/20 text-slate-400';
+  }
+
+  getCategoryLabel(category: string): string {
+    const map: Record<string, string> = {
+      google_ads: 'Ads',
+      content_seo: 'SEO',
+      social: 'Social',
+      media: 'Media',
+      product: 'Product',
+      email: 'Email',
+      ops: 'Ops',
+      finance: 'Finance',
+      legal: 'Legal'
+    };
+    return map[category] || category;
   }
 }

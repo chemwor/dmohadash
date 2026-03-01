@@ -72,6 +72,13 @@ export class SupabaseService {
 
   constructor(private http: HttpClient) {}
 
+  retryCaseAnalysis(token: string, sendEmail: boolean): Observable<{ ok: boolean; status: string; emailSent: boolean }> {
+    return this.http.post<{ ok: boolean; status: string; emailSent: boolean }>(
+      `/api/admin/cases/${token}/retry`,
+      { sendEmail }
+    );
+  }
+
   getData(period: SupabasePeriod = 'today'): Observable<SupabaseData> {
     const params = new HttpParams().set('period', period);
 

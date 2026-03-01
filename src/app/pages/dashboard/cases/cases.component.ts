@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
@@ -10,7 +11,7 @@ import { SupabaseService, SupabaseData, RecentCase, CompletedCase, SupabasePerio
 @Component({
   selector: 'app-cases',
   standalone: true,
-  imports: [CommonModule, LoadingSkeletonComponent, MetricCardComponent],
+  imports: [CommonModule, FormsModule, LoadingSkeletonComponent, MetricCardComponent],
   templateUrl: './cases.component.html'
 })
 export class CasesComponent implements OnInit, OnDestroy {
@@ -18,7 +19,7 @@ export class CasesComponent implements OnInit, OnDestroy {
 
   supabaseData: SupabaseData | null = null;
 
-  selectedPeriod: SupabasePeriod = 'week';
+  selectedPeriod: SupabasePeriod = 'today';
   periods = [
     { value: 'today' as SupabasePeriod, label: 'Today' },
     { value: 'week' as SupabasePeriod, label: 'This Week' },
@@ -38,6 +39,12 @@ export class CasesComponent implements OnInit, OnDestroy {
   error = '';
   lastRefreshed: Date | null = null;
   isRefreshing = false;
+
+  // Retry analysis state
+  retryingToken = '';
+  retrySendEmail: { [token: string]: boolean } = {};
+  retrySuccess = '';
+  retryError = '';
 
   constructor(private supabaseService: SupabaseService) {}
 
@@ -231,5 +238,28 @@ export class CasesComponent implements OnInit, OnDestroy {
     const stats = this.supabaseData?.outputStats;
     if (!stats || stats.total === 0) return 0;
     return (stats.error / stats.total) * 100;
+  }
+
+  retryCase(token: string): void {
+    this.retryingToken = token;
+    this.retrySuccess = '';
+    this.retryError = '';
+    const sendEmail = this.retrySendEmail[token] || false;
+
+    this.supabaseService.retryCaseAnalysis(token, sendEmail)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.retryingToken = '';
+          this.retrySuccess = `Analysis generated successfully${result.emailSent ? ' — receipt email sent' : ''}`;
+          this.loadData();
+          setTimeout(() => this.retrySuccess = '', 5000);
+        },
+        error: (err) => {
+          this.retryingToken = '';
+          this.retryError = err.error?.error || err.message || 'Retry failed';
+          setTimeout(() => this.retryError = '', 5000);
+        }
+      });
   }
 }

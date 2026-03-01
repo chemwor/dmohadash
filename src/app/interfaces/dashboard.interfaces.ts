@@ -284,6 +284,7 @@ export interface DocReference {
   id?: string;
   doc_key: string;
   doc_name: string;
+  doc_url?: string | null;
   summary_text: string;
   key_points: string[];
   last_refreshed: string | null;

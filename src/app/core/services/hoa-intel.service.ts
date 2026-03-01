@@ -5,16 +5,22 @@ import { Observable, catchError, of } from 'rxjs';
 export interface HoaNewsArticle {
   id: string;
   title: string;
-  summary: string;
-  source_url: string;
-  source_name: string;
-  published_date: string;
-  relevance_score: number;
+  summary?: string;
+  description?: string;
+  source_url?: string;
+  link?: string;
+  source_name?: string;
+  source?: string;
+  published_date?: string;
+  pubDate?: string;
+  timestamp?: string;
+  created_at?: string;
+  relevance_score?: number;
   category: string;
-  sentiment: string;
-  key_takeaways: string[];
+  sentiment?: string;
+  priority?: string;
+  key_takeaways?: string[];
   status: 'new' | 'reviewed' | 'archived';
-  created_at: string;
 }
 
 export interface HoaNewsResponse {
@@ -31,9 +37,13 @@ export class HoaIntelService {
 
   constructor(private http: HttpClient) {}
 
-  getArticles(status?: string): Observable<HoaNewsResponse> {
-    const params = status ? `?status=${status}` : '';
-    return this.http.get<HoaNewsResponse>(`${this.apiUrl}${params}`).pipe(
+  getArticles(status?: string, category?: string): Observable<HoaNewsResponse> {
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+    if (category) params.append('category', category);
+    const qs = params.toString();
+    const url = qs ? `${this.apiUrl}?${qs}` : this.apiUrl;
+    return this.http.get<HoaNewsResponse>(url).pipe(
       catchError(error => {
         console.error('HOA intel service error:', error);
         return of({ articles: [], count: 0, lastUpdated: '' });

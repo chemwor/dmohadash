@@ -19,13 +19,4 @@ export class DocReferencesService {
       })
     );
   }
-
-  refresh(docKey: string): Observable<DocReference> {
-    return this.http.post<DocReference>(`${this.apiUrl}/refresh`, { doc_key: docKey }).pipe(
-      catchError(error => {
-        console.error('Doc reference refresh error:', error);
-        throw error;
-      })
-    );
-  }
 }

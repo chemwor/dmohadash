@@ -79,10 +79,6 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/dashboard/cases/cases.component').then(m => m.CasesComponent)
       },
       {
-        path: 'hoa-news',
-        loadComponent: () => import('./pages/dashboard/hoa-news/hoa-news.component').then(m => m.HOANewsComponent)
-      },
-      {
         path: 'legality-scorecard',
         loadComponent: () => import('./pages/dashboard/legality-scorecard/legality-scorecard.component').then(m => m.LegalityScorecardComponent)
       },

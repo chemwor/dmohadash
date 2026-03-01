@@ -3,7 +3,8 @@
   <div class="px-4 sm:px-6 lg:px-8">
     <div class="flex items-center justify-between h-14 md:h-16">
       <div class="flex items-center min-w-0">
-        <h1 class="text-base md:text-lg font-bold text-slate-100">HOA Intel</h1>
+        <h1 class="text-base md:text-lg font-bold text-slate-100">HOA News</h1>
+        <span class="ml-2 text-xs text-slate-500 hidden sm:inline">Legislation, enforcement & industry updates</span>
       </div>
       <button
         (click)="scanNews()"
@@ -19,32 +20,61 @@
   </div>
 </header>
 
-<!-- Filter Tabs -->
-<div class="px-4 sm:px-6 lg:px-8 py-3 border-b border-slate-700/50">
-  <div class="flex space-x-1 bg-slate-800 rounded-lg p-0.5 w-fit overflow-x-auto">
-    @for (tab of [{key: '', label: 'All'}, {key: 'new', label: 'New'}, {key: 'reviewed', label: 'Reviewed'}, {key: 'archived', label: 'Archived'}]; track tab.key) {
-      <button
-        (click)="setFilter(tab.key)"
-        [class]="activeFilter === tab.key
-          ? 'px-3 py-1.5 text-xs font-medium rounded-md bg-indigo-500 text-white whitespace-nowrap'
-          : 'px-3 py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-slate-100 whitespace-nowrap'"
+<!-- Status Tabs -->
+<div class="px-4 sm:px-6 lg:px-8 py-3 border-b border-slate-700/50 bg-slate-800/50">
+  <div class="flex items-center justify-between gap-4 flex-wrap">
+    <!-- Status filter tabs -->
+    <div class="flex space-x-1 bg-slate-800 rounded-lg p-0.5 overflow-x-auto">
+      @for (tab of statusTabs; track tab.value) {
+        <button
+          (click)="setStatus(tab.value)"
+          [class]="activeStatus === tab.value
+            ? 'px-3 py-1.5 text-xs font-medium rounded-md bg-indigo-500 text-white whitespace-nowrap'
+            : 'px-3 py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-slate-100 whitespace-nowrap'"
+        >
+          {{ tab.label }}
+        </button>
+      }
+    </div>
+
+    <!-- Category + Sort -->
+    <div class="flex items-center gap-2">
+      <select
+        [(ngModel)]="activeCategory"
+        (ngModelChange)="onFilterChange()"
+        class="px-2.5 py-1.5 text-xs bg-slate-800 border border-slate-700 rounded-lg text-slate-300 focus:ring-indigo-500 focus:border-indigo-500"
       >
-        {{ tab.label }}
-      </button>
-    }
+        @for (cat of categories; track cat.value) {
+          <option [value]="cat.value">{{ cat.label }}</option>
+        }
+      </select>
+
+      <select
+        [(ngModel)]="sortBy"
+        (ngModelChange)="onSortChange()"
+        class="px-2.5 py-1.5 text-xs bg-slate-800 border border-slate-700 rounded-lg text-slate-300 focus:ring-indigo-500 focus:border-indigo-500"
+      >
+        <option value="newest">Newest First</option>
+        <option value="oldest">Oldest First</option>
+        <option value="relevance">By Relevance</option>
+      </select>
+    </div>
   </div>
 </div>
 
 <main class="px-4 sm:px-6 lg:px-8 py-4 md:py-6">
   <!-- Loading State -->
   @if (loading && articles.length === 0) {
-    <div class="space-y-4">
-      @for (i of [1,2,3]; track i) {
+    <div class="space-y-3">
+      @for (i of [1,2,3,4]; track i) {
         <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
-          <app-loading-skeleton height="14px" width="20%"></app-loading-skeleton>
-          <div class="mt-2"><app-loading-skeleton height="18px" width="70%"></app-loading-skeleton></div>
-          <div class="mt-2"><app-loading-skeleton height="12px" width="50%"></app-loading-skeleton></div>
-          <div class="mt-3"><app-loading-skeleton height="40px" width="100%"></app-loading-skeleton></div>
+          <div class="flex items-center gap-2 mb-2">
+            <app-loading-skeleton height="14px" width="60px"></app-loading-skeleton>
+            <app-loading-skeleton height="14px" width="80px"></app-loading-skeleton>
+          </div>
+          <app-loading-skeleton height="18px" width="70%"></app-loading-skeleton>
+          <div class="mt-2"><app-loading-skeleton height="12px" width="90%"></app-loading-skeleton></div>
+          <div class="mt-2"><app-loading-skeleton height="12px" width="40%"></app-loading-skeleton></div>
         </div>
       }
     </div>
@@ -64,44 +94,92 @@
       <svg class="w-12 h-12 text-slate-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
       </svg>
-      <p class="text-slate-400">No intel articles yet. Run a scan to fetch the latest HOA news.</p>
+      <p class="text-slate-400 mb-2">No articles found.</p>
+      <p class="text-slate-500 text-sm mb-4">Run a scan to fetch the latest HOA news.</p>
+      <button
+        (click)="scanNews()"
+        [disabled]="scanning"
+        class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors text-sm font-medium disabled:opacity-50"
+      >
+        {{ scanning ? 'Scanning...' : 'Scan News' }}
+      </button>
+    </div>
+  }
+
+  <!-- Article Count -->
+  @if (articles.length > 0) {
+    <div class="flex items-center justify-between mb-4">
+      <span class="text-xs text-slate-500">{{ articles.length }} articles</span>
+      @if (activeStatus === '') {
+        <div class="flex items-center gap-3 text-xs">
+          <span class="text-blue-400">{{ newCount }} unreviewed</span>
+          <span class="text-green-400">{{ reviewedCount }} reviewed</span>
+        </div>
+      }
     </div>
   }
 
   <!-- Article Cards -->
   @if (articles.length > 0) {
-    <div class="space-y-4">
+    <div class="space-y-3">
       @for (article of articles; track article.id) {
-        <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
-          <!-- Category & Source -->
-          <div class="flex items-center justify-between mb-2">
-            <div class="flex items-center space-x-2">
+        <div class="bg-slate-800 rounded-xl border border-slate-700 p-4 hover:border-slate-600 transition-colors">
+          <!-- Top row: Category + Status + Date -->
+          <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+            <div class="flex items-center gap-2">
               <span [class]="'text-[10px] font-semibold uppercase px-2 py-0.5 rounded ' + getCategoryBadge(article.category)">
                 {{ article.category }}
+              </span>
+              <span [class]="'text-[10px] font-semibold uppercase px-2 py-0.5 rounded ' + getStatusBadge(article.status)">
+                {{ article.status === 'new' ? 'Unreviewed' : article.status }}
               </span>
               @if (article.sentiment) {
                 <span [class]="'text-xs ' + getSentimentColor(article.sentiment)">{{ article.sentiment }}</span>
               }
             </div>
-            @if (article.relevance_score) {
-              <span class="text-xs text-slate-500">Score: {{ article.relevance_score }}/10</span>
-            }
+            <div class="flex items-center gap-2 text-xs text-slate-500">
+              @if (article.relevance_score) {
+                <span class="text-amber-400/80">Score: {{ article.relevance_score }}/10</span>
+              }
+              @if (getArticleDate(article)) {
+                <span [title]="getArticleDateFull(article)" class="flex items-center gap-1">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  {{ getArticleDate(article) }}
+                </span>
+              }
+            </div>
           </div>
 
-          <!-- Title -->
-          <h3 class="text-sm font-semibold text-slate-100 mb-1">{{ article.title }}</h3>
+          <!-- Title (clickable if link available) -->
+          @if (getArticleUrl(article)) {
+            <a
+              [href]="getArticleUrl(article)"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-sm font-semibold text-slate-100 hover:text-indigo-400 transition-colors inline-flex items-center gap-1.5 mb-1"
+            >
+              {{ getArticleTitle(article) }}
+              <svg class="w-3.5 h-3.5 flex-shrink-0 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+              </svg>
+            </a>
+          } @else {
+            <h3 class="text-sm font-semibold text-slate-100 mb-1">{{ getArticleTitle(article) }}</h3>
+          }
 
-          <!-- Source & Date -->
+          <!-- Source -->
           <p class="text-xs text-slate-500 mb-2">
-            {{ article.source_name }}
-            @if (article.published_date) {
-              <span> &middot; {{ article.published_date }}</span>
+            {{ getArticleSource(article) }}
+            @if (getArticleDateFull(article)) {
+              <span> &middot; {{ getArticleDateFull(article) }}</span>
             }
           </p>
 
           <!-- Summary -->
-          @if (article.summary) {
-            <p class="text-sm text-slate-400 mb-3 leading-relaxed">{{ article.summary }}</p>
+          @if (getArticleSummary(article)) {
+            <p class="text-sm text-slate-400 mb-3 leading-relaxed line-clamp-3">{{ getArticleSummary(article) }}</p>
           }
 
           <!-- Key Takeaways -->
@@ -120,28 +198,41 @@
           }
 
           <!-- Actions -->
-          <div class="flex items-center space-x-2 pt-2 border-t border-slate-700">
-            @if (article.source_url) {
+          <div class="flex items-center flex-wrap gap-2 pt-2 border-t border-slate-700">
+            @if (getArticleUrl(article)) {
               <a
-                [href]="article.source_url"
+                [href]="getArticleUrl(article)"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-slate-100 transition-colors min-h-[44px] flex items-center"
+                class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-slate-100 transition-colors min-h-[36px] flex items-center gap-1.5"
               >
-                Read Source
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                </svg>
+                Read Article
               </a>
             }
             @if (article.status !== 'reviewed') {
               <button
                 (click)="updateStatus(article, 'reviewed')"
-                class="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 transition-colors min-h-[44px] flex items-center"
+                class="px-3 py-1.5 text-xs font-medium rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors min-h-[36px] flex items-center gap-1.5"
               >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
                 Mark Reviewed
+              </button>
+            } @else {
+              <button
+                (click)="updateStatus(article, 'new')"
+                class="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors min-h-[36px] flex items-center gap-1.5"
+              >
+                Mark Unreviewed
               </button>
             }
             <button
               (click)="updateStatus(article, 'archived')"
-              class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-500 hover:text-slate-400 hover:bg-slate-700 transition-colors min-h-[44px] flex items-center"
+              class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-500 hover:text-slate-400 hover:bg-slate-700 transition-colors min-h-[36px] flex items-center"
             >
               Dismiss
             </button>
