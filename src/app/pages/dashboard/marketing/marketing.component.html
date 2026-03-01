@@ -363,17 +363,46 @@
           @if (klaviyoData && klaviyoData.flowStats && klaviyoData.flowStats.length > 0) {
             <div class="border-t border-slate-700 mt-4 pt-4">
               <h3 class="text-sm font-medium text-slate-300 mb-3">Flows ({{ klaviyoData.totalFlows }})</h3>
-              <div class="space-y-2">
+              <div class="space-y-3">
                 @for (flow of klaviyoData!.flowStats; track flow.name) {
-                  <div class="flex justify-between items-center text-sm">
-                    <span class="text-slate-300 truncate mr-2">{{ flow.name }}</span>
-                    <span class="text-xs px-2 py-1 rounded-full"
-                      [class]="flow.status === 'live' ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'">
-                      {{ flow.status }}
-                    </span>
+                  <div class="p-3 bg-slate-700/30 rounded-lg border border-slate-700/50">
+                    <div class="flex justify-between items-center mb-2">
+                      <span class="text-sm text-slate-200 font-medium truncate mr-2">{{ flow.name }}</span>
+                      <span class="text-xs px-2 py-0.5 rounded-full flex-shrink-0"
+                        [class]="flow.status === 'live' ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'">
+                        {{ flow.status }}
+                      </span>
+                    </div>
+                    @if (flow.sends > 0) {
+                      <div class="grid grid-cols-3 gap-2 text-center">
+                        <div>
+                          <p class="text-lg font-bold text-slate-100">{{ flow.openRate }}%</p>
+                          <p class="text-xs text-slate-500">Open Rate</p>
+                        </div>
+                        <div>
+                          <p class="text-lg font-bold text-slate-100">{{ flow.clickRate }}%</p>
+                          <p class="text-xs text-slate-500">Click Rate</p>
+                        </div>
+                        <div>
+                          <p class="text-lg font-bold text-slate-100">{{ flow.deliveryRate }}%</p>
+                          <p class="text-xs text-slate-500">Delivered</p>
+                        </div>
+                      </div>
+                      <div class="flex justify-between mt-2 pt-2 border-t border-slate-700/50 text-xs text-slate-500">
+                        <span>{{ flow.sends }} sent</span>
+                        <span>{{ flow.opens }} opens</span>
+                        <span>{{ flow.clicks }} clicks</span>
+                        @if (flow.bounces > 0) {
+                          <span class="text-red-400">{{ flow.bounces }} bounced</span>
+                        }
+                      </div>
+                    } @else {
+                      <p class="text-xs text-slate-500">No sends in last 30 days</p>
+                    }
                   </div>
                 }
               </div>
+              <p class="text-xs text-slate-600 mt-2">Last 30 days</p>
             </div>
           }
         }

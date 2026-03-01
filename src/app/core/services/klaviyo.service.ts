@@ -10,6 +10,9 @@ export interface FlowStats {
   clicks: number;
   openRate: number;
   clickRate: number;
+  deliveryRate: number;
+  bounces: number;
+  unsubscribes: number;
 }
 
 export interface KlaviyoList {
@@ -52,6 +55,9 @@ export class KlaviyoService {
           fullPreviewEmails: 0,
           quickPreviewEmails: 0,
           emailsCollectedToday: 0,
+          leadsToday: 0,
+          totalLeads: 0,
+          paidCasesToday: 0,
           lists: [],
           flowStats: [],
           totalFlows: 0,
