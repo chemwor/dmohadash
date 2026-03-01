@@ -148,7 +148,9 @@
                 <span class="text-slate-100">{{ supabaseData?.quickPreviewCompletions || 0 }}</span>
               </div>
               <div class="h-3 bg-slate-700 rounded-full overflow-hidden">
-                <div class="h-full bg-blue-500 rounded-full" style="width: 100%"></div>
+                <div class="h-full bg-blue-500 rounded-full"
+                  [style.width.%]="(supabaseData?.quickPreviewCompletions || 0) > 0 ? 100 : 0">
+                </div>
               </div>
             </div>
 

@@ -61,4 +61,14 @@
   .mobile-card-value {
     @apply text-sm text-slate-100 font-medium;
   }
+
+  /* Safe area for iPhone notch/home indicator */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Nav section divider */
+  .nav-section-label {
+    @apply text-[10px] font-semibold uppercase tracking-widest text-slate-500 px-3 pt-4 pb-1;
+  }
 }

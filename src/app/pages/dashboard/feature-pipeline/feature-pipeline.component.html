@@ -1,0 +1,210 @@
+<!-- Header -->
+<header class="bg-slate-800 border-b border-slate-700 sticky top-14 lg:top-0 z-10">
+  <div class="px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-14 md:h-16">
+      <div class="flex items-center min-w-0">
+        <h1 class="text-base md:text-lg font-bold text-slate-100">Feature Pipeline</h1>
+      </div>
+      <button
+        (click)="toggleAddForm()"
+        class="px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 transition-colors flex items-center"
+      >
+        <svg class="w-4 h-4 md:mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+        </svg>
+        <span class="hidden md:inline">Add Feature</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Filter Tabs -->
+<div class="px-4 sm:px-6 lg:px-8 py-3 border-b border-slate-700/50">
+  <div class="flex space-x-1 bg-slate-800 rounded-lg p-0.5 w-fit overflow-x-auto">
+    @for (tab of [
+      {key: '', label: 'All'},
+      {key: 'proposed', label: 'Proposed (' + getCountByStatus('proposed') + ')'},
+      {key: 'accepted', label: 'Accepted (' + getCountByStatus('accepted') + ')'},
+      {key: 'done', label: 'Done (' + getCountByStatus('done') + ')'}
+    ]; track tab.key) {
+      <button
+        (click)="setFilter($any(tab.key))"
+        [class]="activeFilter === tab.key
+          ? 'px-3 py-1.5 text-xs font-medium rounded-md bg-indigo-500 text-white whitespace-nowrap'
+          : 'px-3 py-1.5 text-xs font-medium rounded-md text-slate-400 hover:text-slate-100 whitespace-nowrap'"
+      >
+        {{ tab.label }}
+      </button>
+    }
+  </div>
+</div>
+
+<main class="px-4 sm:px-6 lg:px-8 py-4 md:py-6">
+  <!-- Add Feature Form -->
+  @if (showAddForm) {
+    <div class="mb-4 bg-slate-800 rounded-xl border border-indigo-500/30 p-4">
+      <h3 class="text-sm font-semibold text-slate-100 mb-3">New Feature Request</h3>
+      <div class="space-y-3">
+        <input
+          [(ngModel)]="newFeature.title"
+          placeholder="Feature title"
+          class="w-full text-sm bg-slate-900 border border-slate-700 rounded-lg text-slate-300 px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[44px]"
+        />
+        <textarea
+          [(ngModel)]="newFeature.description"
+          placeholder="Description"
+          rows="3"
+          class="w-full text-sm bg-slate-900 border border-slate-700 rounded-lg text-slate-300 px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+        ></textarea>
+        <div class="flex flex-wrap gap-3">
+          <select
+            [(ngModel)]="newFeature.target_repo"
+            class="text-sm bg-slate-900 border border-slate-700 rounded-lg text-slate-300 px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[44px]"
+          >
+            <option value="frontend">Frontend</option>
+            <option value="backend">Backend</option>
+            <option value="dashboard">Dashboard</option>
+          </select>
+          <select
+            [(ngModel)]="newFeature.estimated_effort"
+            class="text-sm bg-slate-900 border border-slate-700 rounded-lg text-slate-300 px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[44px]"
+          >
+            <option value="small">Small</option>
+            <option value="medium">Medium</option>
+            <option value="large">Large</option>
+          </select>
+          <select
+            [(ngModel)]="newFeature.priority"
+            class="text-sm bg-slate-900 border border-slate-700 rounded-lg text-slate-300 px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 min-h-[44px]"
+          >
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div class="flex justify-end space-x-2">
+          <button (click)="toggleAddForm()" class="px-4 py-2 text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors min-h-[44px]">Cancel</button>
+          <button
+            (click)="createFeature()"
+            [disabled]="!newFeature.title.trim() || !newFeature.description.trim()"
+            class="px-4 py-2 text-sm font-medium rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 transition-colors disabled:opacity-50 min-h-[44px]"
+          >
+            Create
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Loading State -->
+  @if (loading && features.length === 0) {
+    <div class="space-y-3">
+      @for (i of [1,2,3]; track i) {
+        <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+          <app-loading-skeleton height="16px" width="50%"></app-loading-skeleton>
+          <div class="mt-2"><app-loading-skeleton height="12px" width="30%"></app-loading-skeleton></div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error && features.length === 0) {
+    <div class="text-center py-12">
+      <p class="text-slate-400 mb-4">{{ error }}</p>
+      <button (click)="loadFeatures()" class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors text-sm font-medium">Retry</button>
+    </div>
+  }
+
+  <!-- Feature Cards -->
+  @if (features.length > 0) {
+    <div class="space-y-3">
+      @for (feature of features; track feature.id) {
+        <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+          <!-- Status & Title -->
+          <div class="flex items-start justify-between mb-2">
+            <div class="min-w-0">
+              <div class="flex items-center space-x-2 mb-1 flex-wrap">
+                <span [class]="'text-[10px] font-semibold uppercase px-2 py-0.5 rounded ' + getStatusBadge(feature.status)">{{ feature.status }}</span>
+                <h3 class="text-sm font-semibold text-slate-100">{{ feature.title }}</h3>
+              </div>
+              <div class="flex items-center space-x-2 text-xs text-slate-500 flex-wrap gap-y-1">
+                <span>{{ feature.target_repo }}</span>
+                <span>&middot;</span>
+                <span>{{ feature.estimated_effort }} effort</span>
+                <span>&middot;</span>
+                <span [class]="getPriorityColor(feature.priority)">{{ feature.priority }} priority</span>
+                @if (feature.source) {
+                  <span>&middot;</span>
+                  <span>{{ feature.source }}</span>
+                }
+              </div>
+            </div>
+          </div>
+
+          <p class="text-sm text-slate-400 mb-3">{{ feature.description }}</p>
+
+          <!-- Prompt generated indicator -->
+          @if (feature.implementation_prompt) {
+            <div class="flex items-center text-xs text-green-400 mb-3">
+              <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              Implementation prompt generated
+            </div>
+          }
+
+          <!-- Actions -->
+          <div class="flex items-center space-x-2 pt-3 border-t border-slate-700 flex-wrap gap-y-2">
+            @if (feature.status === 'proposed') {
+              <button (click)="updateStatus(feature, 'accepted')" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors min-h-[44px] flex items-center">Accept</button>
+            }
+            @if (feature.status === 'accepted' && !feature.implementation_prompt) {
+              <button
+                (click)="generatePrompt(feature)"
+                [disabled]="generatingPromptId === feature.id"
+                class="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 transition-colors disabled:opacity-50 min-h-[44px] flex items-center"
+              >
+                @if (generatingPromptId === feature.id) {
+                  <svg class="w-3 h-3 mr-1.5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                  </svg>
+                  Generating...
+                } @else {
+                  Generate Prompt
+                }
+              </button>
+            }
+            @if (feature.implementation_prompt) {
+              <button (click)="viewPrompt(feature.implementation_prompt!)" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors min-h-[44px] flex items-center">View Prompt</button>
+              <button (click)="copyToClipboard(feature.implementation_prompt!)" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors min-h-[44px] flex items-center">Copy</button>
+            }
+            @if (feature.status === 'accepted') {
+              <button (click)="updateStatus(feature, 'done')" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition-colors min-h-[44px] flex items-center">Mark Done</button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</main>
+
+<!-- Prompt Modal -->
+@if (showPromptModal) {
+  <div class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" (click)="closePromptModal()">
+    <div class="bg-slate-800 rounded-xl border border-slate-700 p-6 max-w-2xl w-full max-h-[80vh] flex flex-col" (click)="$event.stopPropagation()">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-slate-100">Implementation Prompt</h3>
+        <button (click)="copyToClipboard(promptModalContent)" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 transition-colors">
+          Copy to Clipboard
+        </button>
+      </div>
+      <div class="flex-1 overflow-y-auto">
+        <pre class="text-sm text-slate-300 whitespace-pre-wrap bg-slate-900 rounded-lg p-4 border border-slate-700">{{ promptModalContent }}</pre>
+      </div>
+      <div class="flex justify-end mt-4">
+        <button (click)="closePromptModal()" class="px-4 py-2 text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 transition-colors min-h-[44px]">Close</button>
+      </div>
+    </div>
+  </div>
+}

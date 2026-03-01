@@ -102,28 +102,28 @@
           <app-loading-skeleton height="60px"></app-loading-skeleton>
         } @else {
           <p class="text-xs text-slate-400 mb-1">Cost per Lead</p>
-          <p class="text-2xl font-bold" [class]="getCostPerLead() > 0 && getCostPerLead() < 20 ? 'text-green-400' : getCostPerLead() < 50 ? 'text-yellow-400' : 'text-slate-100'">
+          <p class="text-2xl font-bold" [class]="getCostPerLead() > 0 && getCostPerLead() < 20 ? 'text-green-400' : getCostPerLead() > 0 && getCostPerLead() < 50 ? 'text-yellow-400' : 'text-slate-100'">
             @if (getCostPerLead() > 0) {
               ${{ getCostPerLead() | number:'1.2-2' }}
             } @else {
               N/A
             }
           </p>
-          <p class="text-xs text-slate-500 mt-1">Ad Spend / Emails Today</p>
+          <p class="text-xs text-slate-500 mt-1">Ad Spend / {{ klaviyoData?.leadsToday || 0 }} lead{{ (klaviyoData?.leadsToday || 0) === 1 ? '' : 's' }} today</p>
         }
       </div>
 
-      <!-- Email Growth -->
+      <!-- Leads Today -->
       <div class="card">
         @if (loadingStates.klaviyo) {
           <app-loading-skeleton height="60px"></app-loading-skeleton>
         } @else {
-          <p class="text-xs text-slate-400 mb-1">Email List Growth</p>
-          <p class="text-2xl font-bold text-indigo-400">
-            +{{ klaviyoData?.emailsCollectedToday || 0 }}
+          <p class="text-xs text-slate-400 mb-1">Leads Today</p>
+          <p class="text-2xl font-bold" [class]="(klaviyoData?.leadsToday || 0) > 0 ? 'text-indigo-400' : 'text-slate-100'">
+            +{{ klaviyoData?.leadsToday || 0 }}
           </p>
           <p class="text-xs text-slate-500 mt-1">
-            {{ getEmailGrowthRate() | number:'1.2-2' }}% daily growth
+            {{ klaviyoData?.totalLeads || 0 }} total leads
           </p>
         }
       </div>

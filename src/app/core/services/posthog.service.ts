@@ -14,7 +14,7 @@ export interface PageWithIssues {
   deadClicks: number;
 }
 
-export interface ClarityData {
+export interface PosthogData {
   // User Behavior
   totalSessions: number;
   totalPageViews: number;
@@ -50,16 +50,16 @@ export interface ClarityData {
 @Injectable({
   providedIn: 'root'
 })
-export class ClarityService {
-  private readonly apiUrl = '/api/dashboard/clarity';
+export class PosthogService {
+  private readonly apiUrl = '/api/dashboard/posthog';
 
   constructor(private http: HttpClient) {}
 
-  getData(forceRefresh = false): Observable<ClarityData> {
+  getData(forceRefresh = false): Observable<PosthogData> {
     const url = forceRefresh ? `${this.apiUrl}?refresh=true` : this.apiUrl;
-    return this.http.get<ClarityData>(url).pipe(
+    return this.http.get<PosthogData>(url).pipe(
       catchError(error => {
-        console.error('Clarity service error:', error);
+        console.error('PostHog service error:', error);
         return of({
           totalSessions: 0,
           totalPageViews: 0,
@@ -78,7 +78,7 @@ export class ClarityService {
           slowPageLoads: 0,
           dailyVisits: [],
           pagesWithIssues: [],
-          error: error.message || 'Failed to fetch Clarity data'
+          error: error.message || 'Failed to fetch PostHog data'
         });
       })
     );

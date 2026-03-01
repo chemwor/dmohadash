@@ -4,7 +4,7 @@ import { Subject, takeUntil } from 'rxjs';
 
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 
-import { ClarityService, ClarityData } from '../../../core/services/clarity.service';
+import { PosthogService, PosthogData } from '../../../core/services/posthog.service';
 import { LighthouseService, LighthouseData } from '../../../core/services/lighthouse.service';
 
 @Component({
@@ -16,16 +16,16 @@ import { LighthouseService, LighthouseData } from '../../../core/services/lighth
 export class SitePerformanceComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
-  clarityData: ClarityData | null = null;
+  posthogData: PosthogData | null = null;
   lighthouseData: LighthouseData | null = null;
 
   loadingStates = {
-    clarity: false,
+    posthog: false,
     lighthouse: false
   };
 
   errors = {
-    clarity: '',
+    posthog: '',
     lighthouse: ''
   };
 
@@ -33,7 +33,7 @@ export class SitePerformanceComponent implements OnInit, OnDestroy {
   isRefreshing = false;
 
   constructor(
-    private clarityService: ClarityService,
+    private posthogService: PosthogService,
     private lighthouseService: LighthouseService
   ) {}
 
@@ -48,7 +48,7 @@ export class SitePerformanceComponent implements OnInit, OnDestroy {
 
   refreshAll(): void {
     this.isRefreshing = true;
-    this.loadClarityData(true);
+    this.loadPosthogData(true);
     this.loadLighthouseData(true);
 
     setTimeout(() => {
@@ -57,23 +57,23 @@ export class SitePerformanceComponent implements OnInit, OnDestroy {
     }, 1000);
   }
 
-  loadClarityData(forceRefresh = false): void {
-    this.loadingStates.clarity = true;
-    this.errors.clarity = '';
+  loadPosthogData(forceRefresh = false): void {
+    this.loadingStates.posthog = true;
+    this.errors.posthog = '';
 
-    this.clarityService.getData(forceRefresh)
+    this.posthogService.getData(forceRefresh)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (data) => {
-          this.clarityData = data;
-          this.loadingStates.clarity = false;
+          this.posthogData = data;
+          this.loadingStates.posthog = false;
           if (data.error) {
-            this.errors.clarity = data.error;
+            this.errors.posthog = data.error;
           }
         },
         error: (err) => {
-          this.loadingStates.clarity = false;
-          this.errors.clarity = err.message || 'Failed to load Clarity data';
+          this.loadingStates.posthog = false;
+          this.errors.posthog = err.message || 'Failed to load PostHog data';
         }
       });
   }
@@ -120,24 +120,24 @@ export class SitePerformanceComponent implements OnInit, OnDestroy {
 
   // Computed metrics
   getFrustrationIndex(): number {
-    const rageClicks = this.clarityData?.rageClicks || 0;
-    const deadClicks = this.clarityData?.deadClicks || 0;
-    const quickBacks = this.clarityData?.quickBacks || 0;
-    const excessiveScrolling = this.clarityData?.excessiveScrolling || 0;
+    const rageClicks = this.posthogData?.rageClicks || 0;
+    const deadClicks = this.posthogData?.deadClicks || 0;
+    const quickBacks = this.posthogData?.quickBacks || 0;
+    const excessiveScrolling = this.posthogData?.excessiveScrolling || 0;
     return rageClicks + deadClicks + quickBacks + excessiveScrolling;
   }
 
   getErrorRate(): number {
-    const sessions = this.clarityData?.totalSessions || 0;
+    const sessions = this.posthogData?.totalSessions || 0;
     if (sessions === 0) return 0;
-    return ((this.clarityData?.jsErrors || 0) / sessions) * 100;
+    return ((this.posthogData?.jsErrors || 0) / sessions) * 100;
   }
 
   getEngagementScore(): number {
     // Score based on pages per session, scroll depth, and time on page
-    const pagesPerSession = this.clarityData?.pagesPerSession || 0;
-    const scrollDepth = this.clarityData?.avgScrollDepth || 0;
-    const timeOnPage = this.clarityData?.avgTimeOnPage || 0;
+    const pagesPerSession = this.posthogData?.pagesPerSession || 0;
+    const scrollDepth = this.posthogData?.avgScrollDepth || 0;
+    const timeOnPage = this.posthogData?.avgTimeOnPage || 0;
 
     // Normalize each factor (0-100)
     const pagesScore = Math.min(pagesPerSession * 20, 100); // 5 pages = 100
@@ -181,8 +181,8 @@ export class SitePerformanceComponent implements OnInit, OnDestroy {
   }
 
   getSessionsPerVisitor(): number {
-    const visitors = this.clarityData?.uniqueVisitors || 0;
+    const visitors = this.posthogData?.uniqueVisitors || 0;
     if (visitors === 0) return 0;
-    return (this.clarityData?.totalSessions || 0) / visitors;
+    return (this.posthogData?.totalSessions || 0) / visitors;
   }
 }

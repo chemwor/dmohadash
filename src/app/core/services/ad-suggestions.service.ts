@@ -81,6 +81,39 @@ export interface NegativeKeywordAudit {
   coverageScore: string;
 }
 
+export interface CampaignBrief {
+  campaignName: string;
+  trajectory: 'improving' | 'declining' | 'stable';
+  planAlignment: string;
+  budgetAssessment: string;
+  gradeImpact: string;
+  strategicRecommendation: string;
+}
+
+export interface PlanContext {
+  plan_start_date: string;
+  days_since_start: number;
+  current_month_number: number;
+  current_month_name: string;
+  current_theme: string;
+  budget_planned: number;
+  budget_actual: number;
+  monthly_revenue: number;
+  roas: number;
+  monthly_visitors: number;
+  ads_ctr_pct: number;
+  ads_conversions: number;
+  cac: number;
+  grades: {
+    traffic: string;
+    ctr: string;
+    revenue: string;
+    roas: string;
+  };
+  scenario: string;
+  all_months: { month: number; name: string; theme: string; budget: number }[];
+}
+
 export interface AdSuggestionsData {
   periodInsights?: PeriodInsights;
   performanceSummary: string;
@@ -91,6 +124,9 @@ export interface AdSuggestionsData {
   keywordOpportunities?: KeywordOpportunity[];
   searchTermsAnalysis?: SearchTermsAnalysis;
   negativeKeywordAudit?: NegativeKeywordAudit;
+  campaignBrief?: CampaignBrief;
+  planContext?: PlanContext;
+  campaignFilter?: string;
   generatedAt?: string;
   dateRange?: {
     startDate: string;
@@ -106,6 +142,9 @@ export interface AdSuggestionsRequest {
   startDate: string;
   endDate: string;
   customerId?: string;
+  campaignName?: string;
+  campaignId?: string;
+  includePlanContext?: boolean;
 }
 
 interface JobResponse {

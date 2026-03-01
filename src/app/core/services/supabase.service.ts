@@ -18,9 +18,7 @@ export interface RecentCase {
   token: string;
   email: string | null;
   created_at: string;
-  status: string;
-  type: 'quick' | 'full';
-  unlocked: boolean;
+  status: 'quick_preview' | 'full_preview' | 'paid';
   noticeType: string | null;
   issueText: string | null;
   amount: number | null;

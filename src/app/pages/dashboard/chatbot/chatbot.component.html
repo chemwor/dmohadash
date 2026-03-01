@@ -1,0 +1,100 @@
+<!-- Chat Layout - Full height -->
+<div class="flex flex-col h-[calc(100vh-3.5rem)] lg:h-screen">
+  <!-- Header -->
+  <header class="bg-slate-800 border-b border-slate-700 flex-shrink-0">
+    <div class="px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-14 md:h-16">
+        <div class="flex items-center min-w-0">
+          <h1 class="text-base md:text-lg font-bold text-slate-100">DMHOA Advisor</h1>
+        </div>
+        @if (contextUsed.length > 0) {
+          <div class="flex items-center space-x-1 overflow-x-auto">
+            <span class="text-xs text-slate-500 flex-shrink-0">Using:</span>
+            @for (ctx of contextUsed.slice(0, 3); track ctx) {
+              <span class="text-[10px] px-1.5 py-0.5 bg-indigo-500/20 text-indigo-400 rounded flex-shrink-0">{{ ctx }}</span>
+            }
+            @if (contextUsed.length > 3) {
+              <span class="text-[10px] text-slate-500">+{{ contextUsed.length - 3 }}</span>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  </header>
+
+  <!-- Messages Area -->
+  <div #messagesContainer class="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-4 space-y-4">
+    @if (historyLoading) {
+      <div class="flex justify-center py-8">
+        <div class="flex space-x-1">
+          <div class="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style="animation-delay: 0s"></div>
+          <div class="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style="animation-delay: 0.15s"></div>
+          <div class="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style="animation-delay: 0.3s"></div>
+        </div>
+      </div>
+    }
+
+    @for (msg of messages; track $index) {
+      @if (msg.role === 'assistant') {
+        <!-- Assistant Message -->
+        <div class="flex items-start space-x-3 max-w-[90%] md:max-w-[75%]">
+          <div class="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <div class="bg-slate-800 border border-slate-700 rounded-xl rounded-tl-none px-4 py-3">
+            <p class="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed">{{ msg.content }}</p>
+          </div>
+        </div>
+      } @else {
+        <!-- User Message -->
+        <div class="flex justify-end">
+          <div class="bg-indigo-500 rounded-xl rounded-tr-none px-4 py-3 max-w-[90%] md:max-w-[75%]">
+            <p class="text-sm text-white whitespace-pre-wrap leading-relaxed">{{ msg.content }}</p>
+          </div>
+        </div>
+      }
+    }
+
+    <!-- Typing Indicator -->
+    @if (sending) {
+      <div class="flex items-start space-x-3 max-w-[90%] md:max-w-[75%]">
+        <div class="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+          </svg>
+        </div>
+        <div class="bg-slate-800 border border-slate-700 rounded-xl rounded-tl-none px-4 py-3">
+          <div class="flex space-x-1">
+            <div class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0s"></div>
+            <div class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.15s"></div>
+            <div class="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style="animation-delay: 0.3s"></div>
+          </div>
+        </div>
+      </div>
+    }
+  </div>
+
+  <!-- Input Bar - Fixed to bottom -->
+  <div class="flex-shrink-0 bg-slate-800 border-t border-slate-700 px-4 sm:px-6 lg:px-8 py-3">
+    <div class="flex items-end space-x-3 max-w-3xl mx-auto">
+      <textarea
+        [(ngModel)]="inputMessage"
+        (keydown)="onKeydown($event)"
+        placeholder="Ask about your business..."
+        rows="1"
+        class="flex-1 text-sm bg-slate-900 border border-slate-700 rounded-xl text-slate-300 px-4 py-3 focus:ring-indigo-500 focus:border-indigo-500 resize-none min-h-[44px] max-h-32"
+      ></textarea>
+      <button
+        (click)="sendMessage()"
+        [disabled]="!inputMessage.trim() || sending"
+        class="px-4 py-3 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] min-w-[44px] flex items-center justify-center flex-shrink-0"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>

@@ -26,12 +26,12 @@ export class CasesComponent implements OnInit, OnDestroy {
     { value: 'all' as SupabasePeriod, label: 'All Time' }
   ];
 
-  selectedFilter: 'all' | 'quick' | 'full' | 'purchased' = 'all';
+  selectedFilter: 'all' | 'quick_preview' | 'full_preview' | 'paid' = 'all';
   filters = [
     { value: 'all' as const, label: 'All Cases' },
-    { value: 'quick' as const, label: 'Quick Preview' },
-    { value: 'full' as const, label: 'Full Preview' },
-    { value: 'purchased' as const, label: 'Purchased' }
+    { value: 'quick_preview' as const, label: 'Quick Preview' },
+    { value: 'full_preview' as const, label: 'Full Preview' },
+    { value: 'paid' as const, label: 'Paid' }
   ];
 
   isLoading = false;
@@ -55,7 +55,7 @@ export class CasesComponent implements OnInit, OnDestroy {
     this.loadData();
   }
 
-  setFilter(filter: 'all' | 'quick' | 'full' | 'purchased'): void {
+  setFilter(filter: 'all' | 'quick_preview' | 'full_preview' | 'paid'): void {
     this.selectedFilter = filter;
   }
 
@@ -92,33 +92,28 @@ export class CasesComponent implements OnInit, OnDestroy {
     if (!this.supabaseData?.recentCases) return [];
 
     return this.supabaseData.recentCases.filter(c => {
-      switch (this.selectedFilter) {
-        case 'quick':
-          return c.type === 'quick';
-        case 'full':
-          return c.type === 'full';
-        case 'purchased':
-          return c.unlocked;
-        default:
-          return true;
-      }
+      if (this.selectedFilter === 'all') return true;
+      return c.status === this.selectedFilter;
     });
   }
 
   getStatusClass(caseItem: RecentCase): string {
-    if (caseItem.unlocked) {
-      return 'bg-green-500/20 text-green-400 border-green-500/30';
+    switch (caseItem.status) {
+      case 'paid':
+        return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'full_preview':
+        return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
+      default:
+        return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
     }
-    if (caseItem.type === 'full') {
-      return 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30';
-    }
-    return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
   }
 
   getStatusLabel(caseItem: RecentCase): string {
-    if (caseItem.unlocked) return 'Purchased';
-    if (caseItem.type === 'full') return 'Full Preview';
-    return 'Quick Preview';
+    switch (caseItem.status) {
+      case 'paid': return 'Paid';
+      case 'full_preview': return 'Full Preview';
+      default: return 'Quick Preview';
+    }
   }
 
   formatDate(dateString: string): string {
@@ -165,17 +160,17 @@ export class CasesComponent implements OnInit, OnDestroy {
 
   getPurchasedCount(): number {
     if (!this.supabaseData?.recentCases) return 0;
-    return this.supabaseData.recentCases.filter(c => c.unlocked).length;
+    return this.supabaseData.recentCases.filter(c => c.status === 'paid').length;
   }
 
   getQuickPreviewCount(): number {
     if (!this.supabaseData?.recentCases) return 0;
-    return this.supabaseData.recentCases.filter(c => c.type === 'quick').length;
+    return this.supabaseData.recentCases.filter(c => c.status === 'quick_preview').length;
   }
 
   getFullPreviewCount(): number {
     if (!this.supabaseData?.recentCases) return 0;
-    return this.supabaseData.recentCases.filter(c => c.type === 'full').length;
+    return this.supabaseData.recentCases.filter(c => c.status === 'full_preview').length;
   }
 
   getNoticeTypeDistribution(): { type: string; count: number }[] {

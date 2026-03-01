@@ -400,21 +400,21 @@
 
     <!-- Row 4: Microsoft Clarity Analytics -->
     <section class="mb-8">
-      <h2 class="section-header">Site Analytics (Microsoft Clarity)</h2>
+      <h2 class="section-header">Site Analytics (PostHog)</h2>
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <!-- Visits & Sessions -->
         <div class="card">
           <h3 class="text-sm font-medium text-slate-300 mb-4">Visits & Sessions (3 days)</h3>
-          @if (loadingStates.clarity) {
+          @if (loadingStates.posthog) {
             <div class="space-y-3">
               @for (i of [1, 2, 3]; track i) {
                 <app-loading-skeleton height="24px"></app-loading-skeleton>
               }
             </div>
-          } @else if (errors.clarity) {
+          } @else if (errors.posthog) {
             <div class="text-center py-4">
-              <p class="text-red-500 mb-2 text-sm">{{ errors.clarity }}</p>
-              <button (click)="loadClarityData(true)" class="text-indigo-400 hover:text-indigo-300 underline text-sm">
+              <p class="text-red-500 mb-2 text-sm">{{ errors.posthog }}</p>
+              <button (click)="loadPosthogData(true)" class="text-indigo-400 hover:text-indigo-300 underline text-sm">
                 Retry
               </button>
             </div>
@@ -422,34 +422,34 @@
             <div class="space-y-4">
               <div class="flex justify-between items-center">
                 <span class="text-slate-400">Total Visits</span>
-                <span class="text-2xl font-bold text-slate-100">{{ clarityData?.totalVisits | number }}</span>
+                <span class="text-2xl font-bold text-slate-100">{{ posthogData?.totalVisits | number }}</span>
               </div>
               <div class="flex justify-between items-center">
                 <span class="text-slate-400">Unique Visitors</span>
-                <span class="text-xl font-semibold text-slate-100">{{ clarityData?.uniqueVisitors | number }}</span>
+                <span class="text-xl font-semibold text-slate-100">{{ posthogData?.uniqueVisitors | number }}</span>
               </div>
               <div class="flex justify-between items-center">
                 <span class="text-slate-400">Sessions</span>
-                <span class="text-xl font-semibold text-slate-100">{{ clarityData?.totalSessions | number }}</span>
+                <span class="text-xl font-semibold text-slate-100">{{ posthogData?.totalSessions | number }}</span>
               </div>
               <div class="border-t border-slate-700 pt-3 mt-3">
                 <div class="flex justify-between items-center text-sm">
                   <span class="text-slate-400">Pages/Session</span>
-                  <span class="text-slate-100">{{ clarityData?.pagesPerSession | number:'1.1-1' }}</span>
+                  <span class="text-slate-100">{{ posthogData?.pagesPerSession | number:'1.1-1' }}</span>
                 </div>
                 <div class="flex justify-between items-center text-sm mt-2">
                   <span class="text-slate-400">Avg Time on Page</span>
-                  <span class="text-slate-100">{{ formatTime(clarityData?.avgTimeOnPage || 0) }}</span>
+                  <span class="text-slate-100">{{ formatTime(posthogData?.avgTimeOnPage || 0) }}</span>
                 </div>
                 <div class="flex justify-between items-center text-sm mt-2">
                   <span class="text-slate-400">Bounce Rate</span>
-                  <span class="text-slate-100">{{ clarityData?.bounceRate | number:'1.1-1' }}%</span>
+                  <span class="text-slate-100">{{ posthogData?.bounceRate | number:'1.1-1' }}%</span>
                 </div>
               </div>
             </div>
-            @if (clarityData?.isMockData) {
+            @if (posthogData?.isMockData) {
               <div class="mt-4 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
-                <p class="text-xs text-amber-400">Mock data - add Clarity API credentials</p>
+                <p class="text-xs text-amber-400">Mock data - add PostHog API credentials</p>
               </div>
             }
           }
@@ -458,15 +458,15 @@
         <!-- Frustration Signals -->
         <div class="card">
           <h3 class="text-sm font-medium text-slate-300 mb-4">Frustration Signals</h3>
-          @if (loadingStates.clarity) {
+          @if (loadingStates.posthog) {
             <div class="space-y-3">
               @for (i of [1, 2, 3, 4]; track i) {
                 <app-loading-skeleton height="24px"></app-loading-skeleton>
               }
             </div>
-          } @else if (errors.clarity) {
+          } @else if (errors.posthog) {
             <div class="text-center py-4">
-              <p class="text-red-500 mb-2 text-sm">{{ errors.clarity }}</p>
+              <p class="text-red-500 mb-2 text-sm">{{ errors.posthog }}</p>
             </div>
           } @else {
             <div class="space-y-3">
@@ -477,7 +477,7 @@
                   </svg>
                   <span class="text-slate-300">Rage Clicks</span>
                 </div>
-                <span class="text-xl font-bold text-red-400">{{ clarityData?.rageClicks | number }}</span>
+                <span class="text-xl font-bold text-red-400">{{ posthogData?.rageClicks | number }}</span>
               </div>
               <div class="flex justify-between items-center p-3 bg-amber-500/10 rounded-lg">
                 <div class="flex items-center">
@@ -486,7 +486,7 @@
                   </svg>
                   <span class="text-slate-300">Dead Clicks</span>
                 </div>
-                <span class="text-xl font-bold text-amber-400">{{ clarityData?.deadClicks | number }}</span>
+                <span class="text-xl font-bold text-amber-400">{{ posthogData?.deadClicks | number }}</span>
               </div>
               <div class="flex justify-between items-center p-3 bg-slate-700/50 rounded-lg">
                 <div class="flex items-center">
@@ -495,7 +495,7 @@
                   </svg>
                   <span class="text-slate-300">Quick Backs</span>
                 </div>
-                <span class="text-xl font-bold text-slate-100">{{ clarityData?.quickBacks | number }}</span>
+                <span class="text-xl font-bold text-slate-100">{{ posthogData?.quickBacks | number }}</span>
               </div>
               <div class="flex justify-between items-center p-3 bg-slate-700/50 rounded-lg">
                 <div class="flex items-center">
@@ -504,7 +504,7 @@
                   </svg>
                   <span class="text-slate-300">Excessive Scroll</span>
                 </div>
-                <span class="text-xl font-bold text-slate-100">{{ clarityData?.excessiveScrolling | number }}</span>
+                <span class="text-xl font-bold text-slate-100">{{ posthogData?.excessiveScrolling | number }}</span>
               </div>
             </div>
           }
@@ -513,15 +513,15 @@
         <!-- Technical Issues -->
         <div class="card">
           <h3 class="text-sm font-medium text-slate-300 mb-4">Technical Issues</h3>
-          @if (loadingStates.clarity) {
+          @if (loadingStates.posthog) {
             <div class="space-y-3">
               @for (i of [1, 2]; track i) {
                 <app-loading-skeleton height="24px"></app-loading-skeleton>
               }
             </div>
-          } @else if (errors.clarity) {
+          } @else if (errors.posthog) {
             <div class="text-center py-4">
-              <p class="text-red-500 mb-2 text-sm">{{ errors.clarity }}</p>
+              <p class="text-red-500 mb-2 text-sm">{{ errors.posthog }}</p>
             </div>
           } @else {
             <div class="space-y-4">
@@ -530,24 +530,24 @@
                   <p class="text-slate-300 font-medium">JavaScript Errors</p>
                   <p class="text-xs text-slate-500">Errors detected in sessions</p>
                 </div>
-                <span class="text-2xl font-bold text-red-400">{{ clarityData?.jsErrors | number }}</span>
+                <span class="text-2xl font-bold text-red-400">{{ posthogData?.jsErrors | number }}</span>
               </div>
               <div class="flex justify-between items-center p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
                 <div>
                   <p class="text-slate-300 font-medium">Slow Page Loads</p>
                   <p class="text-xs text-slate-500">Pages taking > 3s to load</p>
                 </div>
-                <span class="text-2xl font-bold text-amber-400">{{ clarityData?.slowPageLoads | number }}</span>
+                <span class="text-2xl font-bold text-amber-400">{{ posthogData?.slowPageLoads | number }}</span>
               </div>
               <div class="border-t border-slate-700 pt-4 mt-4">
                 <p class="text-sm text-slate-400 mb-2">Avg Scroll Depth</p>
                 <div class="h-3 bg-slate-700 rounded-full overflow-hidden">
                   <div
                     class="h-full bg-indigo-500 rounded-full transition-all duration-500"
-                    [style.width.%]="clarityData?.avgScrollDepth || 0"
+                    [style.width.%]="posthogData?.avgScrollDepth || 0"
                   ></div>
                 </div>
-                <p class="text-right text-sm text-slate-300 mt-1">{{ clarityData?.avgScrollDepth | number:'1.0-0' }}%</p>
+                <p class="text-right text-sm text-slate-300 mt-1">{{ posthogData?.avgScrollDepth | number:'1.0-0' }}%</p>
               </div>
             </div>
           }
@@ -1063,25 +1063,33 @@
                     <td class="py-3 text-slate-400 whitespace-nowrap">{{ caseItem.created_at | date:'short' }}</td>
                     <td class="py-3 text-slate-100">{{ caseItem.email || 'N/A' }}</td>
                     <td class="py-3">
-                      @if (caseItem.type === 'quick') {
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400">
-                          Quick Preview
+                      @if (caseItem.status === 'paid') {
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400">
+                          Paid
                         </span>
-                      } @else {
+                      } @else if (caseItem.status === 'full_preview') {
                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400">
                           Full Preview
+                        </span>
+                      } @else {
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400">
+                          Quick Preview
                         </span>
                       }
                     </td>
                     <td class="py-3 text-slate-300 capitalize">{{ caseItem.noticeType || 'N/A' }}</td>
                     <td class="py-3 text-center">
-                      @if (caseItem.unlocked) {
+                      @if (caseItem.status === 'paid') {
                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400">
-                          Purchased
+                          Paid
+                        </span>
+                      } @else if (caseItem.status === 'full_preview') {
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-500/20 text-indigo-400">
+                          Full Preview
                         </span>
                       } @else {
                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-500/20 text-slate-400">
-                          {{ caseItem.status || 'Preview' }}
+                          Quick Preview
                         </span>
                       }
                     </td>

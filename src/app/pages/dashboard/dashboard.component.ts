@@ -12,7 +12,7 @@ import { StripeService, StripeData, StripePeriod } from '../../core/services/str
 import { KlaviyoService, KlaviyoData } from '../../core/services/klaviyo.service';
 import { GoogleAdsService, GoogleAdsData } from '../../core/services/google-ads.service';
 import { SupabaseService, SupabaseData, SupabasePeriod } from '../../core/services/supabase.service';
-import { ClarityService, ClarityData } from '../../core/services/clarity.service';
+import { PosthogService, PosthogData } from '../../core/services/posthog.service';
 import { LighthouseService, LighthouseData } from '../../core/services/lighthouse.service';
 import { OpenAIUsageService, OpenAIUsageData } from '../../core/services/openai-usage.service';
 
@@ -29,7 +29,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   klaviyoData: KlaviyoData | null = null;
   googleAdsData: GoogleAdsData | null = null;
   supabaseData: SupabaseData | null = null;
-  clarityData: ClarityData | null = null;
+  posthogData: PosthogData | null = null;
   lighthouseData: LighthouseData | null = null;
   openaiUsageData: OpenAIUsageData | null = null;
 
@@ -45,7 +45,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     klaviyo: false,
     googleAds: false,
     supabase: false,
-    clarity: false,
+    posthog: false,
     lighthouse: false,
     openai: false
   };
@@ -55,7 +55,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     klaviyo: '',
     googleAds: '',
     supabase: '',
-    clarity: '',
+    posthog: '',
     lighthouse: '',
     openai: ''
   };
@@ -72,7 +72,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     private klaviyoService: KlaviyoService,
     private googleAdsService: GoogleAdsService,
     private supabaseService: SupabaseService,
-    private clarityService: ClarityService,
+    private posthogService: PosthogService,
     private lighthouseService: LighthouseService,
     private openaiUsageService: OpenAIUsageService
   ) {}
@@ -129,7 +129,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadKlaviyoData();
     this.loadGoogleAdsData();
     this.loadSupabaseData();
-    this.loadClarityData(true);  // Force refresh to bypass cache
+    this.loadPosthogData(true);  // Force refresh to bypass cache
     this.loadLighthouseData(true);  // Force refresh to bypass cache
     this.loadOpenAIUsageData(true);  // Force refresh to bypass cache
 
@@ -226,23 +226,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
       });
   }
 
-  loadClarityData(forceRefresh = false): void {
-    this.loadingStates.clarity = true;
-    this.errors.clarity = '';
+  loadPosthogData(forceRefresh = false): void {
+    this.loadingStates.posthog = true;
+    this.errors.posthog = '';
 
-    this.clarityService.getData(forceRefresh)
+    this.posthogService.getData(forceRefresh)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (data) => {
-          this.clarityData = data;
-          this.loadingStates.clarity = false;
+          this.posthogData = data;
+          this.loadingStates.posthog = false;
           if (data.error) {
-            this.errors.clarity = data.error;
+            this.errors.posthog = data.error;
           }
         },
         error: (err) => {
-          this.loadingStates.clarity = false;
-          this.errors.clarity = err.message || 'Failed to load Clarity data';
+          this.loadingStates.posthog = false;
+          this.errors.posthog = err.message || 'Failed to load PostHog data';
         }
       });
   }

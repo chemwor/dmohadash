@@ -1,0 +1,188 @@
+<!-- Header -->
+<header class="bg-slate-800 border-b border-slate-700 sticky top-14 lg:top-0 z-10">
+  <div class="px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-14 md:h-16">
+      <div class="flex items-center min-w-0">
+        <h1 class="text-base md:text-lg font-bold text-slate-100">Checklists</h1>
+      </div>
+      <button
+        (click)="loadItems()"
+        [disabled]="loading"
+        class="px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-slate-100 transition-colors disabled:opacity-50 flex items-center"
+      >
+        <svg class="w-4 h-4 md:mr-1.5" [class.animate-spin]="loading" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        <span class="hidden md:inline">Refresh</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="px-4 sm:px-6 lg:px-8 py-4 md:py-6">
+  <!-- Progress Bar -->
+  @if (items.length > 0) {
+    <div class="mb-4 bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div class="flex justify-between items-center mb-2">
+        <span class="text-sm font-semibold text-slate-100">{{ progressPct | number:'1.0-0' }}% complete</span>
+        <span class="text-xs text-slate-400">{{ doneCount }}/{{ totalCount }} items</span>
+      </div>
+      <div class="w-full bg-slate-700 rounded-full h-2.5">
+        <div
+          class="bg-indigo-500 h-2.5 rounded-full transition-all duration-500"
+          [style.width.%]="progressPct"
+        ></div>
+      </div>
+    </div>
+  }
+
+  <!-- Filters -->
+  <div class="mb-4 flex flex-wrap gap-2">
+    <select
+      [(ngModel)]="filterMonth"
+      (ngModelChange)="onFilterChange()"
+      class="px-3 py-2 text-sm bg-slate-800 border border-slate-700 rounded-lg text-slate-300 focus:ring-indigo-500 focus:border-indigo-500 min-h-[44px]"
+    >
+      @for (m of months; track m.value) {
+        <option [value]="m.value">{{ m.label }}</option>
+      }
+    </select>
+
+    <select
+      [(ngModel)]="filterCategory"
+      (ngModelChange)="onFilterChange()"
+      class="px-3 py-2 text-sm bg-slate-800 border border-slate-700 rounded-lg text-slate-300 focus:ring-indigo-500 focus:border-indigo-500 min-h-[44px]"
+    >
+      @for (c of categories; track c.value) {
+        <option [value]="c.value">{{ c.label }}</option>
+      }
+    </select>
+
+    <select
+      [(ngModel)]="filterStatus"
+      (ngModelChange)="onFilterChange()"
+      class="px-3 py-2 text-sm bg-slate-800 border border-slate-700 rounded-lg text-slate-300 focus:ring-indigo-500 focus:border-indigo-500 min-h-[44px]"
+    >
+      <option value="">All Status</option>
+      <option value="pending">Pending</option>
+      <option value="done">Done</option>
+    </select>
+  </div>
+
+  <!-- Loading State -->
+  @if (loading && items.length === 0) {
+    <div class="space-y-3">
+      @for (i of [1,2,3,4,5]; track i) {
+        <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+          <app-loading-skeleton height="16px" width="60%"></app-loading-skeleton>
+          <div class="mt-2"><app-loading-skeleton height="12px" width="30%"></app-loading-skeleton></div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error && items.length === 0) {
+    <div class="text-center py-12">
+      <p class="text-slate-400 mb-4">{{ error }}</p>
+      <button (click)="loadItems()" class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors text-sm font-medium">Retry</button>
+    </div>
+  }
+
+  <!-- Empty State + Seed Button -->
+  @if (!loading && !error && items.length === 0) {
+    <div class="text-center py-12">
+      <svg class="w-12 h-12 text-slate-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+      </svg>
+      <p class="text-slate-400 mb-4">No checklist items yet.</p>
+      <button
+        (click)="seedChecklists()"
+        [disabled]="seeding"
+        class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors text-sm font-medium disabled:opacity-50"
+      >
+        {{ seeding ? 'Seeding...' : 'Seed Checklists from Documents' }}
+      </button>
+    </div>
+  }
+
+  <!-- Checklist Items -->
+  @if (items.length > 0) {
+    <div class="space-y-2">
+      @for (item of items; track item.id) {
+        <div class="bg-slate-800 rounded-xl border border-slate-700 transition-all">
+          <!-- Item Row -->
+          <div class="flex items-center p-3 md:p-4 min-h-[44px] cursor-pointer" (click)="toggleExpand(item.id)">
+            <!-- Checkbox -->
+            <input
+              type="checkbox"
+              [checked]="item.status === 'done'"
+              (click)="$event.stopPropagation()"
+              (change)="toggleItem(item)"
+              class="mr-3 rounded border-slate-600 bg-slate-700 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-slate-800 min-w-[18px] min-h-[18px]"
+            />
+
+            <!-- Priority dot -->
+            <span [class]="'w-2 h-2 rounded-full mr-3 flex-shrink-0 ' + getPriorityDot(item.priority)"></span>
+
+            <!-- Category badge -->
+            <span [class]="'text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded mr-3 flex-shrink-0 ' + getCategoryBadge(item.category)">
+              {{ item.category }}
+            </span>
+
+            <!-- Title -->
+            <span [class]="'text-sm flex-1 min-w-0 truncate ' + (item.status === 'done' ? 'text-slate-500 line-through' : 'text-slate-200')">
+              {{ item.title }}
+            </span>
+
+            <!-- Source doc tag -->
+            @if (item.source_doc) {
+              <span class="text-[10px] text-slate-500 bg-slate-700/50 px-1.5 py-0.5 rounded ml-2 flex-shrink-0 hidden md:inline">
+                {{ item.source_doc }}
+              </span>
+            }
+
+            <!-- Expand icon -->
+            <svg
+              class="w-4 h-4 text-slate-500 ml-2 flex-shrink-0 transition-transform"
+              [class.rotate-180]="expandedId === item.id"
+              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </div>
+
+          <!-- Expanded Details -->
+          @if (expandedId === item.id) {
+            <div class="px-4 pb-4 border-t border-slate-700 pt-3 space-y-3">
+              <p class="text-sm text-slate-400">{{ item.description }}</p>
+
+              <div class="flex flex-wrap gap-3 text-xs text-slate-500">
+                @if (item.due_date) {
+                  <span>Due: {{ item.due_date }}</span>
+                }
+                @if (item.month) {
+                  <span>Month {{ item.month }}</span>
+                }
+                <span>Priority: {{ item.priority }}</span>
+              </div>
+
+              <!-- Notes -->
+              <div>
+                <label class="text-xs text-slate-400 block mb-1">Notes</label>
+                <textarea
+                  [ngModel]="notesBuffer[item.id!] !== undefined ? notesBuffer[item.id!] : (item.notes || '')"
+                  (ngModelChange)="notesBuffer[item.id!] = $event"
+                  (blur)="saveNotes(item)"
+                  rows="2"
+                  placeholder="Add notes..."
+                  class="w-full text-sm bg-slate-900 border border-slate-700 rounded-lg text-slate-300 p-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+                ></textarea>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</main>

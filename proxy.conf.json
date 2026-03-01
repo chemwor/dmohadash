@@ -1,0 +1,8 @@
+{
+  "/api/dashboard": {
+    "target": "https://dmhoa-246713e0bd92.herokuapp.com",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  }
+}

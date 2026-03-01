@@ -24,6 +24,9 @@ export interface KlaviyoData {
   fullPreviewEmails: number;
   quickPreviewEmails: number;
   emailsCollectedToday: number;
+  leadsToday: number;           // New cases from Supabase today
+  totalLeads: number;           // All-time cases from Supabase
+  paidCasesToday: number;       // Paid cases today
   lists: KlaviyoList[];
   flowStats: FlowStats[];
   totalFlows: number;

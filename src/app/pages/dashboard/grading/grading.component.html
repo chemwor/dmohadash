@@ -1,0 +1,142 @@
+<!-- Header -->
+<header class="bg-slate-800 border-b border-slate-700 sticky top-14 lg:top-0 z-10">
+  <div class="px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center h-14 md:h-16">
+      <a routerLink="/dashboard/plan" class="text-slate-400 hover:text-slate-100 mr-3 flex-shrink-0 min-h-[44px] flex items-center">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+      </a>
+      <h1 class="text-base md:text-lg font-bold text-slate-100">Performance Grading</h1>
+    </div>
+  </div>
+</header>
+
+<main class="px-4 sm:px-6 lg:px-8 py-4 md:py-6">
+  <!-- Loading -->
+  @if (loading && !data) {
+    <div class="space-y-4">
+      @for (i of [1,2,3]; track i) {
+        <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+          <app-loading-skeleton height="18px" width="30%"></app-loading-skeleton>
+          <div class="mt-3 space-y-2">
+            @for (j of [1,2,3]; track j) {
+              <app-loading-skeleton height="40px" width="100%"></app-loading-skeleton>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Error -->
+  @if (error && !data) {
+    <div class="text-center py-12">
+      <p class="text-slate-400 mb-4">{{ error }}</p>
+      <button (click)="loadData()" class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors text-sm font-medium">Retry</button>
+    </div>
+  }
+
+  @if (data) {
+    <div class="space-y-4">
+      <!-- Traffic Grades -->
+      <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-slate-100 flex items-center">
+            <svg class="w-4 h-4 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+            </svg>
+            Traffic
+          </h3>
+          <span [class]="'text-xs font-bold px-2.5 py-1 rounded ' + getGradeColor(getCategoryGrade(trafficGrades))">
+            {{ getCategoryGrade(trafficGrades) }}
+          </span>
+        </div>
+        <div class="divide-y divide-slate-700/50">
+          @for (row of trafficGrades; track row.label) {
+            <div class="px-4 py-3">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-sm text-slate-300">{{ row.label }}</span>
+                <div class="flex items-center space-x-3">
+                  <span class="text-sm font-semibold text-slate-100">{{ formatValue(row) }}</span>
+                  <span [class]="'text-xs font-bold px-2 py-0.5 rounded min-w-[28px] text-center ' + getGradeColor(row.metric.grade)">{{ row.metric.grade }}</span>
+                </div>
+              </div>
+              <div class="flex space-x-3 text-[10px] text-slate-500">
+                <span><span class="text-green-500">A</span>: {{ row.thresholds.a }}</span>
+                <span><span class="text-amber-500">C</span>: {{ row.thresholds.c }}</span>
+                <span><span class="text-red-500">F</span>: {{ row.thresholds.f }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Conversion Grades -->
+      <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-slate-100 flex items-center">
+            <svg class="w-4 h-4 mr-2 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Conversion
+          </h3>
+          <span [class]="'text-xs font-bold px-2.5 py-1 rounded ' + getGradeColor(getCategoryGrade(conversionGrades))">
+            {{ getCategoryGrade(conversionGrades) }}
+          </span>
+        </div>
+        <div class="divide-y divide-slate-700/50">
+          @for (row of conversionGrades; track row.label) {
+            <div class="px-4 py-3">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-sm text-slate-300">{{ row.label }}</span>
+                <div class="flex items-center space-x-3">
+                  <span class="text-sm font-semibold text-slate-100">{{ formatValue(row) }}</span>
+                  <span [class]="'text-xs font-bold px-2 py-0.5 rounded min-w-[28px] text-center ' + getGradeColor(row.metric.grade)">{{ row.metric.grade }}</span>
+                </div>
+              </div>
+              <div class="flex space-x-3 text-[10px] text-slate-500">
+                <span><span class="text-green-500">A</span>: {{ row.thresholds.a }}</span>
+                <span><span class="text-amber-500">C</span>: {{ row.thresholds.c }}</span>
+                <span><span class="text-red-500">F</span>: {{ row.thresholds.f }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Revenue Grades -->
+      <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+          <h3 class="text-sm font-semibold text-slate-100 flex items-center">
+            <svg class="w-4 h-4 mr-2 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Revenue
+          </h3>
+          <span [class]="'text-xs font-bold px-2.5 py-1 rounded ' + getGradeColor(getCategoryGrade(revenueGrades))">
+            {{ getCategoryGrade(revenueGrades) }}
+          </span>
+        </div>
+        <div class="divide-y divide-slate-700/50">
+          @for (row of revenueGrades; track row.label) {
+            <div class="px-4 py-3">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-sm text-slate-300">{{ row.label }}</span>
+                <div class="flex items-center space-x-3">
+                  <span class="text-sm font-semibold text-slate-100">{{ formatValue(row) }}</span>
+                  <span [class]="'text-xs font-bold px-2 py-0.5 rounded min-w-[28px] text-center ' + getGradeColor(row.metric.grade)">{{ row.metric.grade }}</span>
+                </div>
+              </div>
+              <div class="flex space-x-3 text-[10px] text-slate-500">
+                <span><span class="text-green-500">A</span>: {{ row.thresholds.a }}</span>
+                <span><span class="text-amber-500">C</span>: {{ row.thresholds.c }}</span>
+                <span><span class="text-red-500">F</span>: {{ row.thresholds.f }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</main>

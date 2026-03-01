@@ -7,7 +7,7 @@ import { LoadingSkeletonComponent } from '../../../shared/components/loading-ske
 
 import { KlaviyoService, KlaviyoData } from '../../../core/services/klaviyo.service';
 import { GoogleAdsService, GoogleAdsData, GoogleAdsPeriod, Campaign } from '../../../core/services/google-ads.service';
-import { AdSuggestionsService, AdSuggestionsData } from '../../../core/services/ad-suggestions.service';
+import { AdSuggestionsService, AdSuggestionsData, AdSuggestionsRequest } from '../../../core/services/ad-suggestions.service';
 
 @Component({
   selector: 'app-marketing',
@@ -32,6 +32,10 @@ export class MarketingComponent implements OnInit, OnDestroy {
   // Date range for AI analysis
   analysisStartDate: string = '';
   analysisEndDate: string = '';
+
+  // Campaign selection for campaign brief
+  selectedCampaign: string = '';
+  readonly planStartDate: string = '2026-02-25';
 
   loadingStates = {
     klaviyo: false,
@@ -147,6 +151,18 @@ export class MarketingComponent implements OnInit, OnDestroy {
     return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
   }
 
+  onCampaignSelected(): void {
+    if (this.selectedCampaign) {
+      // Campaign brief mode: default to plan start -> today
+      this.analysisStartDate = this.planStartDate;
+      this.analysisEndDate = this.formatDateForInput(new Date());
+    }
+  }
+
+  getAvailableCampaigns(): Campaign[] {
+    return this.googleAdsData?.campaigns || [];
+  }
+
   loadSuggestions(): void {
     if (!this.analysisStartDate || !this.analysisEndDate) {
       this.errors.suggestions = 'Please select a date range for analysis';
@@ -161,10 +177,16 @@ export class MarketingComponent implements OnInit, OnDestroy {
     this.loadingStates.suggestions = true;
     this.errors.suggestions = '';
 
-    const request = {
+    const request: AdSuggestionsRequest = {
       startDate: this.analysisStartDate,
       endDate: this.analysisEndDate
     };
+
+    // Add campaign filter if selected
+    if (this.selectedCampaign) {
+      request.campaignName = this.selectedCampaign;
+      request.includePlanContext = true;
+    }
 
     this.adSuggestionsService.getSuggestions(request)
       .pipe(takeUntil(this.destroy$))
@@ -229,9 +251,9 @@ export class MarketingComponent implements OnInit, OnDestroy {
   }
 
   getCostPerLead(): number {
-    const emailsCollected = this.klaviyoData?.emailsCollectedToday || 0;
-    if (emailsCollected === 0) return 0;
-    return this.googleAdsData?.dailySpend ? this.googleAdsData.dailySpend / emailsCollected : 0;
+    const leads = this.klaviyoData?.leadsToday || 0;
+    if (leads === 0) return 0;
+    return this.googleAdsData?.dailySpend ? this.googleAdsData.dailySpend / leads : 0;
   }
 
   getConversionRate(): number {
@@ -239,11 +261,11 @@ export class MarketingComponent implements OnInit, OnDestroy {
     return ((this.googleAdsData.conversions || 0) / this.googleAdsData.clicks) * 100;
   }
 
-  getEmailGrowthRate(): number {
-    const totalProfiles = this.klaviyoData?.totalProfiles || 0;
-    const emailsToday = this.klaviyoData?.emailsCollectedToday || 0;
-    if (totalProfiles === 0) return 0;
-    return (emailsToday / totalProfiles) * 100;
+  getLeadGrowthRate(): number {
+    const totalLeads = this.klaviyoData?.totalLeads || 0;
+    const leadsToday = this.klaviyoData?.leadsToday || 0;
+    if (totalLeads === 0) return 0;
+    return (leadsToday / totalLeads) * 100;
   }
 
   getBestCampaign(): { name: string; cpc: number } | null {
@@ -269,5 +291,14 @@ export class MarketingComponent implements OnInit, OnDestroy {
     if (roas >= 2) return 'text-green-400';
     if (roas >= 1) return 'text-amber-400';
     return 'text-red-400';
+  }
+
+  getGradeClass(grade: string): string {
+    switch (grade) {
+      case 'A': return 'bg-green-500/20 text-green-400';
+      case 'C': return 'bg-amber-500/20 text-amber-400';
+      case 'F': return 'bg-red-500/20 text-red-400';
+      default: return 'bg-slate-500/20 text-slate-400';
+    }
   }
 }

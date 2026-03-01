@@ -1,0 +1,164 @@
+<!-- Header -->
+<header class="bg-slate-800 border-b border-slate-700 sticky top-14 lg:top-0 z-10">
+  <div class="px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-14 md:h-16">
+      <div class="flex items-center min-w-0">
+        <h1 class="text-base md:text-lg font-bold text-slate-100">Cost Tracker</h1>
+        @if (data) {
+          <span class="text-xs text-slate-500 ml-2">{{ data.period }}</span>
+        }
+      </div>
+      <button
+        (click)="loadData()"
+        [disabled]="loading"
+        class="px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-slate-100 transition-colors disabled:opacity-50 flex items-center"
+      >
+        <svg class="w-4 h-4 md:mr-1.5" [class.animate-spin]="loading" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        <span class="hidden md:inline">Refresh</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="px-4 sm:px-6 lg:px-8 py-4 md:py-6">
+  <!-- Loading State -->
+  @if (loading && !data) {
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      @for (i of [1,2,3,4]; track i) {
+        <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+          <app-loading-skeleton height="12px" width="50%"></app-loading-skeleton>
+          <div class="mt-2"><app-loading-skeleton height="28px" width="70%"></app-loading-skeleton></div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Error State -->
+  @if (error && !data) {
+    <div class="text-center py-12">
+      <p class="text-slate-400 mb-4">{{ error }}</p>
+      <button (click)="loadData()" class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors text-sm font-medium">Retry</button>
+    </div>
+  }
+
+  @if (data) {
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+        <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Revenue</p>
+        <p class="text-xl font-bold text-green-400">{{ formatCurrency(data.revenue.net) }}</p>
+        <p class="text-xs text-slate-500 mt-1">Gross: {{ formatCurrency(data.revenue.gross) }}</p>
+      </div>
+      <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+        <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Total Costs</p>
+        <p class="text-xl font-bold text-red-400">{{ formatCurrency(data.costs.total) }}</p>
+        <p class="text-xs text-slate-500 mt-1">{{ formatCurrency(data.burn_rate_daily) }}/day</p>
+      </div>
+      <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+        <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Profit</p>
+        <p [class]="'text-xl font-bold ' + (data.margin.profit >= 0 ? 'text-green-400' : 'text-red-400')">
+          {{ formatCurrency(data.margin.profit) }}
+        </p>
+      </div>
+      <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+        <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Margin</p>
+        <p [class]="'text-xl font-bold ' + (data.margin.margin_pct >= 0 ? 'text-green-400' : 'text-red-400')">
+          {{ formatPercent(data.margin.margin_pct) }}
+        </p>
+      </div>
+    </div>
+
+    <!-- Break-even Indicator -->
+    <div [class]="'mb-6 p-4 rounded-xl border ' + (data.break_even ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30')">
+      <div class="flex items-center">
+        @if (data.break_even) {
+          <span class="w-3 h-3 rounded-full bg-green-400 mr-3 flex-shrink-0"></span>
+          <div>
+            <p class="text-sm font-semibold text-green-400">Break-even: YES</p>
+            <p class="text-xs text-green-400/70">Revenue covers all costs this period</p>
+          </div>
+        } @else {
+          <span class="w-3 h-3 rounded-full bg-red-400 mr-3 flex-shrink-0"></span>
+          <div>
+            <p class="text-sm font-semibold text-red-400">Break-even: NO</p>
+            <p class="text-xs text-red-400/70">Gap: {{ formatCurrency(absValue(data.margin.profit)) }}/month</p>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Cost Breakdown Table -->
+    <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-700">
+        <h3 class="text-sm font-semibold text-slate-100">Cost Breakdown</h3>
+      </div>
+
+      <!-- Desktop Table -->
+      <div class="hidden md:block">
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-slate-700">
+              <th class="text-left text-xs font-semibold text-slate-400 uppercase px-4 py-3">Category</th>
+              <th class="text-right text-xs font-semibold text-slate-400 uppercase px-4 py-3">MTD</th>
+              <th class="text-right text-xs font-semibold text-slate-400 uppercase px-4 py-3">Daily Avg</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of costBreakdown; track row.label) {
+              <tr class="border-b border-slate-700/50">
+                <td class="text-sm text-slate-300 px-4 py-3">{{ row.label }}</td>
+                <td class="text-sm text-slate-300 text-right px-4 py-3">{{ formatCurrency(row.mtd) }}</td>
+                <td class="text-sm text-slate-500 text-right px-4 py-3">{{ row.dailyAvg !== null ? formatCurrency(row.dailyAvg) : '—' }}</td>
+              </tr>
+            }
+            <tr class="bg-slate-700/30">
+              <td class="text-sm font-semibold text-slate-100 px-4 py-3">Total</td>
+              <td class="text-sm font-semibold text-slate-100 text-right px-4 py-3">{{ formatCurrency(data.costs.total) }}</td>
+              <td class="text-sm text-slate-400 text-right px-4 py-3">{{ formatCurrency(data.burn_rate_daily) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Mobile Card View -->
+      <div class="md:hidden divide-y divide-slate-700/50">
+        @for (row of costBreakdown; track row.label) {
+          <div class="px-4 py-3 flex justify-between items-center">
+            <span class="text-sm text-slate-300">{{ row.label }}</span>
+            <div class="text-right">
+              <span class="text-sm font-medium text-slate-200">{{ formatCurrency(row.mtd) }}</span>
+              @if (row.dailyAvg !== null) {
+                <span class="text-xs text-slate-500 block">{{ formatCurrency(row.dailyAvg) }}/day</span>
+              }
+            </div>
+          </div>
+        }
+        <div class="px-4 py-3 flex justify-between items-center bg-slate-700/30">
+          <span class="text-sm font-semibold text-slate-100">Total</span>
+          <span class="text-sm font-semibold text-slate-100">{{ formatCurrency(data.costs.total) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Revenue Breakdown -->
+    <div class="mt-4 bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <h3 class="text-sm font-semibold text-slate-100 mb-3">Revenue Breakdown</h3>
+      <div class="space-y-2 text-sm">
+        <div class="flex justify-between">
+          <span class="text-slate-400">Gross Revenue</span>
+          <span class="text-slate-200">{{ formatCurrency(data.revenue.gross) }}</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Stripe Fees</span>
+          <span class="text-red-400">-{{ formatCurrency(data.revenue.stripe_fees) }}</span>
+        </div>
+        <div class="flex justify-between pt-2 border-t border-slate-700">
+          <span class="text-slate-200 font-medium">Net Revenue</span>
+          <span class="text-green-400 font-medium">{{ formatCurrency(data.revenue.net) }}</span>
+        </div>
+      </div>
+    </div>
+  }
+</main>

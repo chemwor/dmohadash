@@ -1,0 +1,152 @@
+<!-- Header -->
+<header class="bg-slate-800 border-b border-slate-700 sticky top-14 lg:top-0 z-10">
+  <div class="px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-14 md:h-16">
+      <h1 class="text-base md:text-lg font-bold text-slate-100">6-Month Plan</h1>
+      <button
+        (click)="loadData()"
+        [disabled]="loading"
+        class="px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 hover:text-slate-100 transition-colors disabled:opacity-50 flex items-center"
+      >
+        <svg class="w-4 h-4 md:mr-1.5" [class.animate-spin]="loading" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        <span class="hidden md:inline">Refresh</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="px-4 sm:px-6 lg:px-8 py-4 md:py-6">
+  <!-- Loading -->
+  @if (loading && !data) {
+    <div class="space-y-4">
+      <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+        <app-loading-skeleton height="20px" width="60%"></app-loading-skeleton>
+        <div class="mt-2"><app-loading-skeleton height="14px" width="40%"></app-loading-skeleton></div>
+      </div>
+      <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+        <app-loading-skeleton height="16px" width="30%"></app-loading-skeleton>
+        <div class="mt-2"><app-loading-skeleton height="10px" width="100%"></app-loading-skeleton></div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        @for (i of [1,2,3,4,5,6]; track i) {
+          <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
+            <app-loading-skeleton height="16px" width="50%"></app-loading-skeleton>
+            <div class="mt-2"><app-loading-skeleton height="12px" width="70%"></app-loading-skeleton></div>
+            <div class="mt-3"><app-loading-skeleton height="8px" width="100%"></app-loading-skeleton></div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Error -->
+  @if (error && !data) {
+    <div class="text-center py-12">
+      <p class="text-slate-400 mb-4">{{ error }}</p>
+      <button (click)="loadData()" class="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors text-sm font-medium">Retry</button>
+    </div>
+  }
+
+  @if (data) {
+    <!-- Scenario Indicator -->
+    <div [class]="'mb-4 p-4 rounded-xl border ' + getScenarioColor(data.scenario.current)">
+      <div class="flex items-start justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wider opacity-70 mb-1">Current Status</p>
+          <p class="text-lg font-bold">{{ data.scenario.label || ('The ' + data.scenario.current) }}</p>
+        </div>
+        <a routerLink="/dashboard/plan/grading" class="text-sm font-medium underline opacity-80 hover:opacity-100 flex-shrink-0">
+          View Grading &rarr;
+        </a>
+      </div>
+      @if (data.scenario.pivot_triggered) {
+        <div class="mt-3 flex items-start space-x-2 pt-3 border-t border-current/20">
+          <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+          </svg>
+          <p class="text-sm">{{ data.scenario.pivot_reason }}</p>
+        </div>
+      }
+    </div>
+
+    <!-- Budget Tracker -->
+    <div class="mb-4 bg-slate-800 rounded-xl border border-slate-700 p-4">
+      <div class="flex justify-between items-center mb-2">
+        <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Budget</h3>
+        <span class="text-sm text-slate-300">
+          {{ formatCurrency(getTotalBudgetSpent()) }} / {{ formatCurrency(getTotalBudgetPlanned()) }}
+        </span>
+      </div>
+      <div class="w-full bg-slate-700 rounded-full h-2.5">
+        @if (getTotalBudgetPlanned() > 0) {
+          <div
+            class="bg-indigo-500 h-2.5 rounded-full transition-all duration-500"
+            [style.width.%]="(getTotalBudgetSpent() / getTotalBudgetPlanned()) * 100"
+          ></div>
+        }
+      </div>
+      <p class="text-xs text-slate-500 mt-1">
+        Overall progress: {{ (data.overall_progress * 100) | number:'1.0-0' }}% of tasks complete
+      </p>
+    </div>
+
+    <!-- Month Timeline Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      @for (month of data.months; track month.month) {
+        <div [class]="'bg-slate-800 rounded-xl border-2 p-4 transition-all ' + getMonthBorder(month)">
+          <!-- Month Header -->
+          <div class="flex items-center justify-between mb-2">
+            <div>
+              <h3 class="text-sm font-bold text-slate-100">Month {{ month.month }}</h3>
+              <p class="text-xs text-slate-400">{{ month.name }}</p>
+            </div>
+            <span [class]="'text-[10px] font-semibold uppercase px-2 py-0.5 rounded ' + getMonthStatusBadge(month)">
+              {{ getMonthStatus(month) }}
+            </span>
+          </div>
+
+          <!-- Theme -->
+          <p class="text-xs text-slate-500 italic mb-3">"{{ month.theme }}"</p>
+
+          <!-- Progress -->
+          <div class="mb-3">
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-400">Progress</span>
+              <span class="text-slate-300">{{ month.checklist_done }}/{{ month.checklist_total }}</span>
+            </div>
+            <div class="w-full bg-slate-700 rounded-full h-1.5">
+              <div
+                [class]="'h-1.5 rounded-full transition-all duration-300 ' + (month.status === 'active' ? 'bg-indigo-500' : month.status === 'completed' ? 'bg-green-500' : 'bg-slate-600')"
+                [style.width.%]="getProgressPct(month)"
+              ></div>
+            </div>
+          </div>
+
+          <!-- Budget -->
+          <div class="text-xs text-slate-400 mb-3">
+            <span>Budget: {{ formatCurrency(month.budget_actual) }} / {{ formatCurrency(month.budget_planned) }}</span>
+          </div>
+
+          <!-- View Details -->
+          @if (month.status !== 'upcoming') {
+            <a
+              [routerLink]="'/dashboard/plan/month/' + month.month"
+              class="text-indigo-400 hover:text-indigo-300 text-xs font-medium"
+            >
+              View Details &rarr;
+            </a>
+          } @else {
+            <span class="text-slate-600 text-xs flex items-center">
+              <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+              Locked
+            </span>
+          }
+        </div>
+      }
+    </div>
+  }
+</main>
