@@ -42,14 +42,14 @@
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <!-- Performance Grade -->
       <div class="card">
-        @if (loadingStates.lighthouse) {
+        @if (loadingStates.lighthouse || loadingStates.posthog) {
           <app-loading-skeleton height="60px"></app-loading-skeleton>
         } @else {
           <p class="text-xs text-slate-400 mb-1">Performance Grade</p>
-          <p class="text-4xl font-bold" [class]="getScoreClass(lighthouseData?.performanceScore || 0)">
+          <p class="text-4xl font-bold" [class]="getScoreClass(getCompositeScore())">
             {{ getPerformanceGrade() }}
           </p>
-          <p class="text-xs text-slate-500 mt-1">Score: {{ lighthouseData?.performanceScore || 0 }}/100</p>
+          <p class="text-xs text-slate-500 mt-1">Composite: {{ getCompositeScore() }}/100</p>
         }
       </div>
 
@@ -139,6 +139,186 @@
           <p class="text-xs text-slate-400 mb-1">Page Views</p>
           <p class="text-2xl font-bold text-slate-100">{{ posthogData?.totalPageViews || 0 | number }}</p>
           <p class="text-xs text-slate-500 mt-1">Total views</p>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Real User Web Vitals (PostHog RUM) -->
+  <section class="mb-8">
+    <h2 class="section-header">Real User Web Vitals</h2>
+    @if (loadingStates.posthog) {
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        @for (i of [1, 2, 3, 4]; track i) {
+          <app-loading-skeleton height="100px"></app-loading-skeleton>
+        }
+      </div>
+    } @else if (posthogData?.webVitals?.sampleCount === 0) {
+      <div class="card text-center py-6">
+        <p class="text-slate-400 text-sm">No web vitals data collected yet. Ensure PostHog web vitals autocapture is enabled.</p>
+      </div>
+    } @else {
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- LCP -->
+        <div [class]="'card border ' + getVitalBgClass(getVitalRating('lcp', posthogData?.webVitals?.lcp?.p75 || 0))">
+          <p class="text-xs text-slate-400 mb-1">Largest Contentful Paint</p>
+          <p class="text-2xl font-bold" [class]="getVitalColorClass(getVitalRating('lcp', posthogData?.webVitals?.lcp?.p75 || 0))">
+            {{ formatMs(posthogData?.webVitals?.lcp?.p75 || 0) }}
+          </p>
+          <p class="text-xs text-slate-500 mt-1">p75 &middot; p90: {{ formatMs(posthogData?.webVitals?.lcp?.p90 || 0) }}</p>
+        </div>
+
+        <!-- FCP -->
+        <div [class]="'card border ' + getVitalBgClass(getVitalRating('fcp', posthogData?.webVitals?.fcp?.p75 || 0))">
+          <p class="text-xs text-slate-400 mb-1">First Contentful Paint</p>
+          <p class="text-2xl font-bold" [class]="getVitalColorClass(getVitalRating('fcp', posthogData?.webVitals?.fcp?.p75 || 0))">
+            {{ formatMs(posthogData?.webVitals?.fcp?.p75 || 0) }}
+          </p>
+          <p class="text-xs text-slate-500 mt-1">p75 &middot; p90: {{ formatMs(posthogData?.webVitals?.fcp?.p90 || 0) }}</p>
+        </div>
+
+        <!-- CLS -->
+        <div [class]="'card border ' + getVitalBgClass(getVitalRating('cls', posthogData?.webVitals?.cls?.p75 || 0))">
+          <p class="text-xs text-slate-400 mb-1">Cumulative Layout Shift</p>
+          <p class="text-2xl font-bold" [class]="getVitalColorClass(getVitalRating('cls', posthogData?.webVitals?.cls?.p75 || 0))">
+            {{ posthogData?.webVitals?.cls?.p75 || 0 }}
+          </p>
+          <p class="text-xs text-slate-500 mt-1">p75 &middot; p90: {{ posthogData?.webVitals?.cls?.p90 || 0 }}</p>
+        </div>
+
+        <!-- INP -->
+        <div [class]="'card border ' + getVitalBgClass(getVitalRating('inp', posthogData?.webVitals?.inp?.p75 || 0))">
+          <p class="text-xs text-slate-400 mb-1">Interaction to Next Paint</p>
+          <p class="text-2xl font-bold" [class]="getVitalColorClass(getVitalRating('inp', posthogData?.webVitals?.inp?.p75 || 0))">
+            {{ formatMs(posthogData?.webVitals?.inp?.p75 || 0) }}
+          </p>
+          <p class="text-xs text-slate-500 mt-1">p75 &middot; p90: {{ formatMs(posthogData?.webVitals?.inp?.p90 || 0) }}</p>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between mt-3">
+        <span class="text-xs text-slate-500">Based on {{ posthogData?.webVitals?.sampleCount | number }} real user sessions (last 3 days)</span>
+        <div class="flex items-center gap-4">
+          <div class="flex items-center gap-1">
+            <div class="w-2 h-2 rounded-full bg-green-500"></div>
+            <span class="text-xs text-slate-400">Good</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <div class="w-2 h-2 rounded-full bg-yellow-500"></div>
+            <span class="text-xs text-slate-400">Needs Work</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <div class="w-2 h-2 rounded-full bg-red-500"></div>
+            <span class="text-xs text-slate-400">Poor</span>
+          </div>
+        </div>
+      </div>
+    }
+  </section>
+
+  <!-- User Behavior Summary -->
+  <section class="mb-8">
+    <h2 class="section-header">User Behavior Summary</h2>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Top Pages -->
+      <div class="card">
+        <h3 class="text-sm font-medium text-slate-300 mb-4">Top Pages by Views</h3>
+        @if (loadingStates.posthog) {
+          <div class="space-y-3">
+            @for (i of [1, 2, 3, 4, 5]; track i) {
+              <app-loading-skeleton height="32px"></app-loading-skeleton>
+            }
+          </div>
+        } @else if (posthogData?.topPages?.length) {
+          <div class="space-y-3">
+            @for (page of posthogData!.topPages; track page.page; let i = $index) {
+              <div class="flex items-center gap-3">
+                <span class="text-xs text-slate-500 w-5 text-right">{{ i + 1 }}.</span>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center justify-between">
+                    <span class="text-sm text-slate-200 truncate">{{ page.page }}</span>
+                    <span class="text-sm font-medium text-slate-100 ml-2">{{ page.views | number }}</span>
+                  </div>
+                  <div class="h-1.5 bg-slate-700 rounded-full mt-1 overflow-hidden">
+                    <div class="h-full bg-indigo-500 rounded-full"
+                      [style.width.%]="(page.views / (posthogData!.topPages[0]?.views || 1)) * 100">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="text-sm text-slate-500 text-center py-4">No page view data available</p>
+        }
+      </div>
+
+      <!-- Conversion Funnel -->
+      <div class="card">
+        <h3 class="text-sm font-medium text-slate-300 mb-4">Conversion Funnel (3 days)</h3>
+        @if (loadingStates.posthog) {
+          <div class="space-y-4">
+            @for (i of [1, 2, 3]; track i) {
+              <app-loading-skeleton height="48px"></app-loading-skeleton>
+            }
+          </div>
+        } @else {
+          <div class="space-y-3">
+            <!-- Landing -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-sm text-slate-300">Landing Page Sessions</span>
+                <span class="text-sm font-bold text-slate-100">{{ posthogData?.funnel?.landing | number }}</span>
+              </div>
+              <div class="h-7 bg-indigo-500/80 rounded flex items-center px-3">
+                <span class="text-xs text-white font-medium">100%</span>
+              </div>
+            </div>
+
+            <!-- Arrow -->
+            <div class="flex items-center justify-center">
+              <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+              </svg>
+              <span class="text-xs text-slate-500 ml-2">
+                {{ getFunnelRate(posthogData?.funnel?.landing || 0, posthogData?.funnel?.preview || 0) }}% reach preview
+              </span>
+            </div>
+
+            <!-- Preview -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-sm text-slate-300">Preview Page</span>
+                <span class="text-sm font-bold text-slate-100">{{ posthogData?.funnel?.preview | number }}</span>
+              </div>
+              <div class="h-7 bg-indigo-500/60 rounded flex items-center px-3"
+                [style.width.%]="maxVal(getFunnelRate(posthogData?.funnel?.landing || 0, posthogData?.funnel?.preview || 0), 5)">
+                <span class="text-xs text-white font-medium">{{ getFunnelRate(posthogData?.funnel?.landing || 0, posthogData?.funnel?.preview || 0) }}%</span>
+              </div>
+            </div>
+
+            <!-- Arrow -->
+            <div class="flex items-center justify-center">
+              <svg class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+              </svg>
+              <span class="text-xs text-slate-500 ml-2">
+                {{ getFunnelRate(posthogData?.funnel?.preview || 0, posthogData?.funnel?.purchase || 0) }}% convert
+              </span>
+            </div>
+
+            <!-- Purchase -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-sm text-slate-300">Purchase / Checkout</span>
+                <span class="text-sm font-bold text-slate-100">{{ posthogData?.funnel?.purchase | number }}</span>
+              </div>
+              <div class="h-7 bg-green-500/60 rounded flex items-center px-3"
+                [style.width.%]="maxVal(getFunnelRate(posthogData?.funnel?.landing || 0, posthogData?.funnel?.purchase || 0), 5)">
+                <span class="text-xs text-white font-medium">{{ getFunnelRate(posthogData?.funnel?.landing || 0, posthogData?.funnel?.purchase || 0) }}%</span>
+              </div>
+            </div>
+          </div>
         }
       </div>
     </div>
@@ -260,9 +440,9 @@
         }
       </div>
 
-      <!-- Core Web Vitals -->
+      <!-- Synthetic Web Vitals (Lighthouse) -->
       <div class="card lg:col-span-3">
-        <h3 class="text-sm font-medium text-slate-300 mb-4">Core Web Vitals</h3>
+        <h3 class="text-sm font-medium text-slate-300 mb-4">Synthetic Web Vitals (Lighthouse)</h3>
         @if (loadingStates.lighthouse) {
           <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
             @for (i of [1, 2, 3, 4, 5, 6]; track i) {
@@ -273,7 +453,7 @@
           <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div [class]="'p-4 rounded-lg border ' + getScoreBgClass(lighthouseData?.fcp?.score || 0)">
               <div class="flex items-center justify-between mb-1">
-                <span class="text-xs text-slate-400">First Contentful Paint</span>
+                <span class="text-xs text-slate-400">FCP</span>
                 <span [class]="'text-xs font-medium ' + getScoreClass(lighthouseData?.fcp?.score || 0)">{{ lighthouseData?.fcp?.score || 0 }}</span>
               </div>
               <p class="text-xl font-bold text-slate-100">{{ lighthouseData?.fcp?.displayValue || 'N/A' }}</p>
@@ -281,7 +461,7 @@
 
             <div [class]="'p-4 rounded-lg border ' + getScoreBgClass(lighthouseData?.lcp?.score || 0)">
               <div class="flex items-center justify-between mb-1">
-                <span class="text-xs text-slate-400">Largest Contentful Paint</span>
+                <span class="text-xs text-slate-400">LCP</span>
                 <span [class]="'text-xs font-medium ' + getScoreClass(lighthouseData?.lcp?.score || 0)">{{ lighthouseData?.lcp?.score || 0 }}</span>
               </div>
               <p class="text-xl font-bold text-slate-100">{{ lighthouseData?.lcp?.displayValue || 'N/A' }}</p>
@@ -289,7 +469,7 @@
 
             <div [class]="'p-4 rounded-lg border ' + getScoreBgClass(lighthouseData?.tbt?.score || 0)">
               <div class="flex items-center justify-between mb-1">
-                <span class="text-xs text-slate-400">Total Blocking Time</span>
+                <span class="text-xs text-slate-400">TBT</span>
                 <span [class]="'text-xs font-medium ' + getScoreClass(lighthouseData?.tbt?.score || 0)">{{ lighthouseData?.tbt?.score || 0 }}</span>
               </div>
               <p class="text-xl font-bold text-slate-100">{{ lighthouseData?.tbt?.displayValue || 'N/A' }}</p>
@@ -297,7 +477,7 @@
 
             <div [class]="'p-4 rounded-lg border ' + getScoreBgClass(lighthouseData?.cls?.score || 0)">
               <div class="flex items-center justify-between mb-1">
-                <span class="text-xs text-slate-400">Cumulative Layout Shift</span>
+                <span class="text-xs text-slate-400">CLS</span>
                 <span [class]="'text-xs font-medium ' + getScoreClass(lighthouseData?.cls?.score || 0)">{{ lighthouseData?.cls?.score || 0 }}</span>
               </div>
               <p class="text-xl font-bold text-slate-100">{{ lighthouseData?.cls?.displayValue || 'N/A' }}</p>
@@ -313,26 +493,10 @@
 
             <div [class]="'p-4 rounded-lg border ' + getScoreBgClass(lighthouseData?.tti?.score || 0)">
               <div class="flex items-center justify-between mb-1">
-                <span class="text-xs text-slate-400">Time to Interactive</span>
+                <span class="text-xs text-slate-400">TTI</span>
                 <span [class]="'text-xs font-medium ' + getScoreClass(lighthouseData?.tti?.score || 0)">{{ lighthouseData?.tti?.score || 0 }}</span>
               </div>
               <p class="text-xl font-bold text-slate-100">{{ lighthouseData?.tti?.displayValue || 'N/A' }}</p>
-            </div>
-          </div>
-
-          <!-- Legend -->
-          <div class="flex items-center justify-center gap-6 mt-4 pt-4 border-t border-slate-700">
-            <div class="flex items-center gap-2">
-              <div class="w-3 h-3 rounded-full bg-green-500"></div>
-              <span class="text-xs text-slate-400">Good (90-100)</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
-              <span class="text-xs text-slate-400">Needs Work (50-89)</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <div class="w-3 h-3 rounded-full bg-red-500"></div>
-              <span class="text-xs text-slate-400">Poor (0-49)</span>
             </div>
           </div>
         }
@@ -340,8 +504,8 @@
     </div>
   </section>
 
-  <!-- Microsoft Clarity -->
-  <section>
+  <!-- Site Analytics (PostHog) -->
+  <section class="mb-8">
     <h2 class="section-header">Site Analytics (PostHog)</h2>
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <!-- Visits & Sessions -->
@@ -420,25 +584,27 @@
               </div>
               <span class="text-xl font-bold text-amber-400">{{ posthogData?.deadClicks | number }}</span>
             </div>
-            <div class="flex justify-between items-center p-3 bg-slate-700/50 rounded-lg">
-              <div class="flex items-center">
-                <svg class="w-5 h-5 text-slate-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" />
-                </svg>
-                <span class="text-slate-300">Quick Backs</span>
-              </div>
-              <span class="text-xl font-bold text-slate-100">{{ posthogData?.quickBacks | number }}</span>
-            </div>
-            <div class="flex justify-between items-center p-3 bg-slate-700/50 rounded-lg">
-              <div class="flex items-center">
-                <svg class="w-5 h-5 text-slate-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                </svg>
-                <span class="text-slate-300">Excessive Scroll</span>
-              </div>
-              <span class="text-xl font-bold text-slate-100">{{ posthogData?.excessiveScrolling | number }}</span>
-            </div>
           </div>
+
+          <!-- Pages with Issues -->
+          @if (posthogData?.pagesWithIssues?.length) {
+            <div class="border-t border-slate-700 mt-4 pt-3">
+              <p class="text-xs text-slate-400 mb-2 font-medium">Pages with Issues</p>
+              @for (page of posthogData!.pagesWithIssues; track page.page) {
+                <div class="flex items-center justify-between text-xs py-1.5">
+                  <span class="text-slate-300 truncate flex-1 mr-2">{{ page.page }}</span>
+                  <div class="flex gap-3 flex-shrink-0">
+                    @if (page.rageClicks > 0) {
+                      <span class="text-red-400">{{ page.rageClicks }} rage</span>
+                    }
+                    @if (page.deadClicks > 0) {
+                      <span class="text-amber-400">{{ page.deadClicks }} dead</span>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
         }
       </div>
 
@@ -463,17 +629,9 @@
             <div class="flex justify-between items-center p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
               <div>
                 <p class="text-slate-300 font-medium">Slow Page Loads</p>
-                <p class="text-xs text-slate-500">Pages taking > 3s to load</p>
+                <p class="text-xs text-slate-500">Sessions with LCP > 3s</p>
               </div>
               <span class="text-2xl font-bold text-amber-400">{{ posthogData?.slowPageLoads | number }}</span>
-            </div>
-            <div class="border-t border-slate-700 pt-4 mt-4">
-              <p class="text-sm text-slate-400 mb-2">Avg Scroll Depth</p>
-              <div class="h-3 bg-slate-700 rounded-full overflow-hidden">
-                <div class="h-full bg-indigo-500 rounded-full transition-all duration-500"
-                  [style.width.%]="posthogData?.avgScrollDepth || 0"></div>
-              </div>
-              <p class="text-right text-sm text-slate-300 mt-1">{{ posthogData?.avgScrollDepth | number:'1.0-0' }}%</p>
             </div>
           </div>
         }
@@ -483,7 +641,7 @@
 
   <!-- Daily Visitor Trend -->
   @if (posthogData?.dailyVisits && posthogData!.dailyVisits.length > 0) {
-    <section class="mt-8">
+    <section class="mb-8">
       <h2 class="section-header">Daily Visitor Trend</h2>
       <div class="card">
         <div class="space-y-3">
@@ -493,15 +651,65 @@
               <div class="flex-1 h-8 bg-slate-700 rounded overflow-hidden relative">
                 <div
                   class="h-full bg-indigo-500 rounded transition-all duration-300"
-                  [style.width.%]="((day.visits || 0) / (posthogData?.totalVisits || 1)) * 100 * 3"
+                  [style.width.%]="((day.visits || 0) / getMaxDailyVisits()) * 100"
                 ></div>
                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-300">
-                  {{ day.visits || 0 }} visits ({{ day.sessions || 0 }} sessions)
+                  {{ day.visits || 0 }} views &middot; {{ day.sessions || 0 }} sessions
                 </span>
               </div>
             </div>
           }
         </div>
+      </div>
+    </section>
+  }
+
+  <!-- Performance Suggestions -->
+  @if (posthogData?.suggestions?.length) {
+    <section class="mb-8">
+      <h2 class="section-header">Performance Suggestions</h2>
+      <div class="space-y-3">
+        @for (suggestion of posthogData!.suggestions; track suggestion.title) {
+          <div [class]="'card border flex items-start gap-4 ' +
+            (suggestion.type === 'error' ? 'border-red-500/30' :
+             suggestion.type === 'warning' ? 'border-amber-500/30' :
+             suggestion.type === 'info' ? 'border-blue-500/30' :
+             'border-green-500/30')">
+            <!-- Icon -->
+            <div class="flex-shrink-0 mt-0.5">
+              @switch (suggestion.type) {
+                @case ('error') {
+                  <svg class="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                  </svg>
+                }
+                @case ('warning') {
+                  <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                }
+                @case ('info') {
+                  <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                }
+                @case ('success') {
+                  <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                }
+              }
+            </div>
+            <!-- Content -->
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-sm font-medium text-slate-200">{{ suggestion.title }}</span>
+                <span class="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-400">{{ suggestion.category }}</span>
+              </div>
+              <p class="text-sm text-slate-400">{{ suggestion.description }}</p>
+            </div>
+          </div>
+        }
       </div>
     </section>
   }

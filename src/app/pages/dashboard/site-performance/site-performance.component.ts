@@ -106,6 +106,11 @@ export class SitePerformanceComponent implements OnInit, OnDestroy {
     return `${mins}m ${secs}s`;
   }
 
+  formatMs(ms: number): string {
+    if (ms >= 1000) return `${(ms / 1000).toFixed(1)}s`;
+    return `${Math.round(ms)}ms`;
+  }
+
   getScoreClass(score: number): string {
     if (score >= 90) return 'text-green-400';
     if (score >= 50) return 'text-yellow-400';
@@ -134,21 +139,18 @@ export class SitePerformanceComponent implements OnInit, OnDestroy {
   }
 
   getEngagementScore(): number {
-    // Score based on pages per session, scroll depth, and time on page
     const pagesPerSession = this.posthogData?.pagesPerSession || 0;
     const scrollDepth = this.posthogData?.avgScrollDepth || 0;
     const timeOnPage = this.posthogData?.avgTimeOnPage || 0;
 
-    // Normalize each factor (0-100)
-    const pagesScore = Math.min(pagesPerSession * 20, 100); // 5 pages = 100
-    const scrollScore = scrollDepth; // already 0-100
-    const timeScore = Math.min(timeOnPage * 2, 100); // 50 seconds = 100
+    const pagesScore = Math.min(pagesPerSession * 20, 100);
+    const scrollScore = scrollDepth;
+    const timeScore = Math.min(timeOnPage * 2, 100);
 
     return Math.round((pagesScore + scrollScore + timeScore) / 3);
   }
 
   getSessionQualityScore(): number {
-    // Combine Lighthouse performance with user experience metrics
     const performance = this.lighthouseData?.performanceScore || 0;
     const engagement = this.getEngagementScore();
     const frustration = Math.max(0, 100 - this.getFrustrationIndex());
@@ -171,8 +173,23 @@ export class SitePerformanceComponent implements OnInit, OnDestroy {
     return 'text-red-400';
   }
 
+  // Composite performance grade (weighted across all sources)
+  getCompositeScore(): number {
+    const lighthouseScore = this.lighthouseData?.performanceScore || 0;
+    const rumScore = this.posthogData?.compositeGrade?.rumScore || 0;
+    const uxScore = this.posthogData?.compositeGrade?.uxScore || 0;
+    const engagementScore = this.posthogData?.compositeGrade?.engagementScore || 0;
+
+    return Math.round(
+      (lighthouseScore * 0.30) +
+      (rumScore * 0.30) +
+      (uxScore * 0.20) +
+      (engagementScore * 0.20)
+    );
+  }
+
   getPerformanceGrade(): string {
-    const score = this.lighthouseData?.performanceScore || 0;
+    const score = this.getCompositeScore();
     if (score >= 90) return 'A';
     if (score >= 80) return 'B';
     if (score >= 70) return 'C';
@@ -184,5 +201,51 @@ export class SitePerformanceComponent implements OnInit, OnDestroy {
     const visitors = this.posthogData?.uniqueVisitors || 0;
     if (visitors === 0) return 0;
     return (this.posthogData?.totalSessions || 0) / visitors;
+  }
+
+  // Web Vitals helpers
+  getVitalRating(metric: string, value: number): 'good' | 'needs-improvement' | 'poor' {
+    const thresholds: Record<string, [number, number]> = {
+      'lcp': [2500, 4000],
+      'fcp': [1800, 3000],
+      'cls': [0.1, 0.25],
+      'inp': [200, 500],
+    };
+    const [good, poor] = thresholds[metric] || [0, 0];
+    if (value <= good) return 'good';
+    if (value <= poor) return 'needs-improvement';
+    return 'poor';
+  }
+
+  getVitalColorClass(rating: 'good' | 'needs-improvement' | 'poor'): string {
+    switch (rating) {
+      case 'good': return 'text-green-400';
+      case 'needs-improvement': return 'text-yellow-400';
+      case 'poor': return 'text-red-400';
+    }
+  }
+
+  getVitalBgClass(rating: 'good' | 'needs-improvement' | 'poor'): string {
+    switch (rating) {
+      case 'good': return 'bg-green-500/10 border-green-500/30';
+      case 'needs-improvement': return 'bg-yellow-500/10 border-yellow-500/30';
+      case 'poor': return 'bg-red-500/10 border-red-500/30';
+    }
+  }
+
+  // Funnel helpers
+  getFunnelRate(from: number, to: number): number {
+    if (from === 0) return 0;
+    return Math.round((to / from) * 100);
+  }
+
+  getMaxDailyVisits(): number {
+    if (!this.posthogData?.dailyVisits?.length) return 1;
+    return Math.max(...this.posthogData.dailyVisits.map(d => d.visits), 1);
+  }
+
+  // Template helper for Math.max (not available in Angular templates)
+  maxVal(a: number, b: number): number {
+    return Math.max(a, b);
   }
 }
