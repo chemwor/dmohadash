@@ -19,6 +19,13 @@ export class CostTrackerComponent implements OnInit, OnDestroy {
   data: CostsData | null = null;
   loading = false;
   error = '';
+  selectedPeriod: 'today' | 'week' | 'month' = 'month';
+
+  periods = [
+    { value: 'today' as const, label: 'Today' },
+    { value: 'week' as const, label: 'Week' },
+    { value: 'month' as const, label: 'Month' }
+  ];
 
   constructor(private costsService: CostsService) {}
 
@@ -31,11 +38,16 @@ export class CostTrackerComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  setPeriod(period: 'today' | 'week' | 'month'): void {
+    this.selectedPeriod = period;
+    this.loadData();
+  }
+
   loadData(): void {
     this.loading = true;
     this.error = '';
 
-    this.costsService.get()
+    this.costsService.get(this.selectedPeriod)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (data) => {
