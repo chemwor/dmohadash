@@ -40,13 +40,20 @@ export class MarketingComponent implements OnInit, OnDestroy {
   loadingStates = {
     klaviyo: false,
     googleAds: false,
-    suggestions: false
+    suggestions: false,
+    customerMatch: false,
+    offlineConversions: false
   };
 
   errors = {
     klaviyo: '',
     googleAds: '',
     suggestions: ''
+  };
+
+  syncResults = {
+    customerMatch: null as any,
+    offlineConversions: null as any
   };
 
   lastRefreshed: Date | null = null;
@@ -300,5 +307,45 @@ export class MarketingComponent implements OnInit, OnDestroy {
       case 'F': return 'bg-red-500/20 text-red-400';
       default: return 'bg-slate-500/20 text-slate-400';
     }
+  }
+
+  syncCustomerMatch(): void {
+    this.loadingStates.customerMatch = true;
+    this.syncResults.customerMatch = null;
+
+    this.googleAdsService.syncCustomerMatch()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.syncResults.customerMatch = result;
+          this.loadingStates.customerMatch = false;
+        },
+        error: (err) => {
+          this.syncResults.customerMatch = {
+            error: err.error?.message || err.message || 'Failed to sync'
+          };
+          this.loadingStates.customerMatch = false;
+        }
+      });
+  }
+
+  uploadOfflineConversions(): void {
+    this.loadingStates.offlineConversions = true;
+    this.syncResults.offlineConversions = null;
+
+    this.googleAdsService.uploadOfflineConversions()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.syncResults.offlineConversions = result;
+          this.loadingStates.offlineConversions = false;
+        },
+        error: (err) => {
+          this.syncResults.offlineConversions = {
+            error: err.error?.message || err.message || 'Failed to upload'
+          };
+          this.loadingStates.offlineConversions = false;
+        }
+      });
   }
 }

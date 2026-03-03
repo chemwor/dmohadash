@@ -110,4 +110,12 @@ export class GoogleAdsService {
       })
     );
   }
+
+  syncCustomerMatch(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/customer-match`, {});
+  }
+
+  uploadOfflineConversions(): Observable<any> {
+    return this.http.post(`${this.apiUrl}/offline-conversions`, {});
+  }
 }

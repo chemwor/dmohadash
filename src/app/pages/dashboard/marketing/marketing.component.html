@@ -293,6 +293,82 @@
       </div>
     </section>
 
+    <!-- Google Ads Data Sync -->
+    <section>
+      <h2 class="section-header">Google Ads Data Sync</h2>
+      <div class="card space-y-4">
+        <p class="text-xs text-slate-500">Push your lead emails and paid conversions to Google Ads for better targeting and bidding optimization.</p>
+
+        <!-- Customer Match -->
+        <div class="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700/50">
+          <div>
+            <p class="text-sm font-medium text-slate-200">Similar Audiences</p>
+            <p class="text-xs text-slate-400">Upload lead emails for audience targeting</p>
+          </div>
+          <button
+            (click)="syncCustomerMatch()"
+            [disabled]="loadingStates.customerMatch"
+            class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
+            [class]="loadingStates.customerMatch
+              ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+              : 'bg-indigo-500/20 text-indigo-400 hover:bg-indigo-500/30 border border-indigo-500/30'">
+            @if (loadingStates.customerMatch) {
+              <span class="flex items-center gap-1.5">
+                <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                Syncing...
+              </span>
+            } @else {
+              Sync Emails
+            }
+          </button>
+        </div>
+        @if (syncResults.customerMatch) {
+          <div class="text-xs px-3 py-2 rounded-lg"
+               [class]="syncResults.customerMatch.error ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400'">
+            @if (syncResults.customerMatch.error) {
+              {{ syncResults.customerMatch.error }}
+            } @else {
+              {{ syncResults.customerMatch.emailsUploaded }} emails synced to "{{ syncResults.customerMatch.listName }}"
+            }
+          </div>
+        }
+
+        <!-- Offline Conversions -->
+        <div class="flex items-center justify-between p-3 rounded-lg bg-slate-800/50 border border-slate-700/50">
+          <div>
+            <p class="text-sm font-medium text-slate-200">Offline Conversions</p>
+            <p class="text-xs text-slate-400">Upload paid cases for bidding optimization</p>
+          </div>
+          <button
+            (click)="uploadOfflineConversions()"
+            [disabled]="loadingStates.offlineConversions"
+            class="px-3 py-1.5 text-xs font-medium rounded-lg transition-colors"
+            [class]="loadingStates.offlineConversions
+              ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
+              : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30'">
+            @if (loadingStates.offlineConversions) {
+              <span class="flex items-center gap-1.5">
+                <svg class="animate-spin h-3 w-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                Uploading...
+              </span>
+            } @else {
+              Upload Conversions
+            }
+          </button>
+        </div>
+        @if (syncResults.offlineConversions) {
+          <div class="text-xs px-3 py-2 rounded-lg"
+               [class]="syncResults.offlineConversions.error ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400'">
+            @if (syncResults.offlineConversions.error) {
+              {{ syncResults.offlineConversions.error }}
+            } @else {
+              {{ syncResults.offlineConversions.conversionsUploaded }} paid conversions uploaded
+            }
+          </div>
+        }
+      </div>
+    </section>
+
     <!-- Email / Klaviyo -->
     <section>
       <h2 class="section-header">Email Collection (Klaviyo)</h2>
