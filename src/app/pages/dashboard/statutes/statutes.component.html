@@ -1,0 +1,345 @@
+<div class="p-4 lg:p-6 max-w-7xl mx-auto">
+
+  <!-- Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-100">HOA Statutes</h1>
+      <p class="text-sm text-slate-400 mt-1">Manage state-specific HOA law references used in case responses</p>
+    </div>
+    <div class="flex gap-3">
+      <button
+        (click)="loadStatutes()"
+        [disabled]="isLoading"
+        class="px-4 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition-colors text-sm font-medium disabled:opacity-50"
+      >
+        Refresh
+      </button>
+      <button
+        (click)="toggleScanPanel()"
+        class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-500 transition-colors text-sm font-medium"
+      >
+        @if (showScanPanel) { Close Scan } @else { Scan Missing }
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  @if (isLoading && !statutes.length) {
+    <app-loading-skeleton></app-loading-skeleton>
+  }
+
+  <!-- Error -->
+  @if (error) {
+    <div class="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-6">
+      <p class="text-red-400 text-sm">{{ error }}</p>
+    </div>
+  }
+
+  @if (coverage) {
+    <!-- Coverage Summary Cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <!-- Total Coverage -->
+      <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+        <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Total Coverage</p>
+        <p class="text-2xl font-bold text-slate-100">{{ coverage.total_existing }} <span class="text-sm font-normal text-slate-500">/ {{ coverage.total_possible }}</span></p>
+        <div class="mt-2 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+          <div class="h-full bg-indigo-500 rounded-full transition-all" [style.width.%]="coveragePercent"></div>
+        </div>
+        <p class="text-xs text-slate-500 mt-1">{{ coveragePercent }}% complete</p>
+      </div>
+
+      <!-- Full Coverage States -->
+      <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+        <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Full Coverage States</p>
+        <p class="text-2xl font-bold text-green-400">{{ fullCoverageStates }}</p>
+        <p class="text-xs text-slate-500 mt-1">of {{ allStates.length }} jurisdictions</p>
+      </div>
+
+      <!-- Categories -->
+      <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+        <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Categories</p>
+        <p class="text-2xl font-bold text-slate-100">{{ categories.length }}</p>
+        <p class="text-xs text-slate-500 mt-1">violation types tracked</p>
+      </div>
+
+      <!-- AI Generated -->
+      <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+        <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">AI Generated</p>
+        <p class="text-2xl font-bold text-amber-400">{{ aiGeneratedPercent }}%</p>
+        <p class="text-xs text-slate-500 mt-1">of all statutes</p>
+      </div>
+    </div>
+
+    <!-- Category Coverage Breakdown -->
+    <div class="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-6">
+      <h3 class="text-sm font-semibold text-slate-300 mb-3">Coverage by Category</h3>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        @for (cat of categories; track cat) {
+          <div class="flex items-center justify-between bg-slate-700/50 rounded-lg px-3 py-2">
+            <span class="text-sm text-slate-300 capitalize">{{ cat }}</span>
+            <span class="text-sm font-semibold" [class]="(coverage.by_category[cat] || 0) >= allStates.length ? 'text-green-400' : 'text-amber-400'">
+              {{ coverage.by_category[cat] || 0 }} / {{ allStates.length }}
+            </span>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- State Coverage Heatmap -->
+    <div class="bg-slate-800 rounded-xl p-4 border border-slate-700 mb-6">
+      <h3 class="text-sm font-semibold text-slate-300 mb-3">State Coverage Map</h3>
+      <p class="text-xs text-slate-500 mb-3">Click a state to filter the table below. Green = full, Yellow = partial, Gray = none.</p>
+      <div class="flex flex-wrap gap-1.5">
+        @for (state of allStates; track state) {
+          <button
+            (click)="filterByState(state)"
+            [class]="'px-2 py-1 text-xs font-mono font-semibold rounded border cursor-pointer transition-all ' +
+              getStateCoverageClass(state) +
+              (selectedState === state ? ' ring-2 ring-indigo-500' : '')"
+          >
+            {{ state }}
+            <span class="text-[10px] opacity-70">{{ getStateCoverage(state) }}/{{ categories.length }}</span>
+          </button>
+        }
+      </div>
+    </div>
+
+    <!-- Scan Panel -->
+    @if (showScanPanel) {
+      <div class="bg-slate-800 rounded-xl p-4 border border-teal-500/30 mb-6">
+        <h3 class="text-sm font-semibold text-teal-400 mb-3">Scan &amp; Generate Missing Statutes</h3>
+        <p class="text-xs text-slate-400 mb-4">Uses Claude Haiku to generate state-specific HOA law references. Processes up to 20 at a time.</p>
+
+        <!-- State Selection -->
+        <div class="mb-4">
+          <label class="text-xs text-slate-400 uppercase tracking-wider block mb-2">States</label>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              (click)="toggleScanState('ALL')"
+              [class]="'px-2 py-1 text-xs font-semibold rounded border transition-all ' +
+                (scanStates.includes('ALL') ? 'bg-teal-500/30 text-teal-400 border-teal-500/50' : 'bg-slate-700/50 text-slate-400 border-slate-600/50')"
+            >ALL</button>
+            @for (state of allStates; track state) {
+              <button
+                (click)="toggleScanState(state)"
+                [class]="'px-2 py-1 text-xs font-mono rounded border transition-all ' +
+                  (isScanStateSelected(state) ? 'bg-teal-500/20 text-teal-400 border-teal-500/40' : 'bg-slate-700/50 text-slate-500 border-slate-600/50')"
+              >{{ state }}</button>
+            }
+          </div>
+        </div>
+
+        <!-- Category Selection -->
+        <div class="mb-4">
+          <label class="text-xs text-slate-400 uppercase tracking-wider block mb-2">Categories</label>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              (click)="toggleScanCategory('ALL')"
+              [class]="'px-2 py-1 text-xs font-semibold rounded border transition-all ' +
+                (scanCategories.includes('ALL') ? 'bg-teal-500/30 text-teal-400 border-teal-500/50' : 'bg-slate-700/50 text-slate-400 border-slate-600/50')"
+            >ALL</button>
+            @for (cat of categories; track cat) {
+              <button
+                (click)="toggleScanCategory(cat)"
+                [class]="'px-2 py-1 text-xs font-semibold rounded border transition-all capitalize ' +
+                  (isScanCategorySelected(cat) ? 'bg-teal-500/20 text-teal-400 border-teal-500/40' : 'bg-slate-700/50 text-slate-500 border-slate-600/50')"
+              >{{ cat }}</button>
+            }
+          </div>
+        </div>
+
+        <!-- Scan Button -->
+        <div class="flex items-center gap-4">
+          <button
+            (click)="startScan()"
+            [disabled]="isScanning"
+            class="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-500 transition-colors text-sm font-medium disabled:opacity-50"
+          >
+            @if (isScanning) {
+              <span class="flex items-center gap-2">
+                <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/></svg>
+                Scanning...
+              </span>
+            } @else {
+              Start Scan
+            }
+          </button>
+
+          @if (totalGenerated > 0 || totalFailed > 0) {
+            <span class="text-xs text-slate-400">
+              Generated: <span class="text-green-400 font-semibold">{{ totalGenerated }}</span>
+              @if (totalFailed > 0) {
+                &nbsp;| Failed: <span class="text-red-400 font-semibold">{{ totalFailed }}</span>
+              }
+            </span>
+          }
+        </div>
+
+        <!-- Scan Error -->
+        @if (scanError) {
+          <div class="mt-3 bg-red-500/10 border border-red-500/30 rounded-lg p-3">
+            <p class="text-red-400 text-xs">{{ scanError }}</p>
+          </div>
+        }
+
+        <!-- Scan Results -->
+        @if (scanResults) {
+          <div class="mt-4 bg-slate-700/50 rounded-lg p-3">
+            <div class="flex items-center justify-between mb-2">
+              <p class="text-xs text-slate-300 font-semibold">Batch Complete</p>
+              @if (scanResults.skipped > 0) {
+                <button
+                  (click)="continueScan()"
+                  [disabled]="isScanning"
+                  class="px-3 py-1 bg-teal-600 text-white rounded text-xs hover:bg-teal-500 transition-colors disabled:opacity-50"
+                >
+                  Continue ({{ scanResults.skipped }} remaining)
+                </button>
+              }
+            </div>
+            <div class="text-xs text-slate-400 space-y-0.5">
+              @for (d of scanResults.details; track d.state + d.category) {
+                <div class="flex items-center gap-2">
+                  <span class="font-mono">{{ d.state }}/{{ d.category }}</span>
+                  <span [class]="d.status === 'generated' ? 'text-green-400' : 'text-red-400'">{{ d.status }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Filters -->
+    <div class="flex flex-col sm:flex-row gap-3 mb-4">
+      <select
+        [(ngModel)]="selectedState"
+        class="bg-slate-800 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+      >
+        <option value="">All States</option>
+        @for (state of allStates; track state) {
+          <option [value]="state">{{ state }}</option>
+        }
+      </select>
+
+      <select
+        [(ngModel)]="selectedCategory"
+        class="bg-slate-800 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+      >
+        <option value="">All Categories</option>
+        @for (cat of categories; track cat) {
+          <option [value]="cat">{{ formatCategory(cat) }}</option>
+        }
+      </select>
+
+      <span class="text-xs text-slate-500 self-center">{{ filteredStatutes.length }} statutes</span>
+    </div>
+
+    <!-- Statutes Table -->
+    <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+      @if (filteredStatutes.length === 0) {
+        <div class="p-8 text-center text-slate-500 text-sm">
+          @if (selectedState || selectedCategory) {
+            No statutes match current filters.
+          } @else {
+            No statutes in database. Use "Scan Missing" to generate them.
+          }
+        </div>
+      } @else {
+        <!-- Table Header -->
+        <div class="hidden sm:grid grid-cols-12 gap-2 px-4 py-2 bg-slate-700/50 text-xs text-slate-400 uppercase tracking-wider font-semibold">
+          <div class="col-span-1">State</div>
+          <div class="col-span-2">Category</div>
+          <div class="col-span-5">Statute</div>
+          <div class="col-span-2">Updated</div>
+          <div class="col-span-2 text-right">Actions</div>
+        </div>
+
+        @for (s of filteredStatutes; track statuteKey(s)) {
+          <!-- Row -->
+          <div class="border-t border-slate-700/50">
+            <div
+              (click)="toggleExpand(s)"
+              class="grid grid-cols-12 gap-2 px-4 py-3 items-center cursor-pointer hover:bg-slate-700/30 transition-colors"
+            >
+              <div class="col-span-2 sm:col-span-1">
+                <span class="font-mono font-semibold text-sm text-slate-200">{{ s.state }}</span>
+              </div>
+              <div class="col-span-4 sm:col-span-2">
+                <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 capitalize">{{ s.violation_category }}</span>
+              </div>
+              <div class="col-span-6 sm:col-span-5">
+                <p class="text-sm text-slate-300 truncate">{{ s.statute_name || 'Unnamed' }}</p>
+              </div>
+              <div class="hidden sm:block col-span-2">
+                <span class="text-xs text-slate-500">{{ formatDate(s.last_updated) }}</span>
+              </div>
+              <div class="hidden sm:flex col-span-2 justify-end gap-2">
+                <button
+                  (click)="deleteStatute(s); $event.stopPropagation()"
+                  [disabled]="isDeleting(s)"
+                  class="text-xs text-red-400 hover:text-red-300 transition-colors disabled:opacity-50"
+                >
+                  @if (isDeleting(s)) { Deleting... } @else { Delete }
+                </button>
+              </div>
+            </div>
+
+            <!-- Expanded Detail -->
+            @if (isExpanded(s)) {
+              <div class="px-4 pb-4 bg-slate-700/20">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                  @if (s.statute_text) {
+                    <div>
+                      <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Summary</p>
+                      <p class="text-sm text-slate-300">{{ s.statute_text }}</p>
+                    </div>
+                  }
+                  @if (s.procedural_requirements) {
+                    <div>
+                      <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Procedural Requirements</p>
+                      <p class="text-sm text-slate-300">{{ s.procedural_requirements }}</p>
+                    </div>
+                  }
+                  @if (s.homeowner_protections) {
+                    <div>
+                      <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Homeowner Protections</p>
+                      <p class="text-sm text-slate-300">{{ s.homeowner_protections }}</p>
+                    </div>
+                  }
+                  @if (s.notice_requirements) {
+                    <div>
+                      <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Notice Requirements</p>
+                      <p class="text-sm text-slate-300">{{ s.notice_requirements }}</p>
+                    </div>
+                  }
+                  @if (s.fine_rules) {
+                    <div>
+                      <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Fine Rules</p>
+                      <p class="text-sm text-slate-300">{{ s.fine_rules }}</p>
+                    </div>
+                  }
+                </div>
+
+                <div class="flex items-center gap-4 mt-3 pt-3 border-t border-slate-700/50">
+                  @if (s.ai_generated) {
+                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">AI Generated</span>
+                  }
+                  <span class="text-[10px] text-slate-500">Created: {{ formatDate(s.created_at) }}</span>
+                  <!-- Mobile delete button -->
+                  <button
+                    (click)="deleteStatute(s); $event.stopPropagation()"
+                    [disabled]="isDeleting(s)"
+                    class="sm:hidden text-xs text-red-400 hover:text-red-300 ml-auto"
+                  >
+                    @if (isDeleting(s)) { Deleting... } @else { Delete }
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      }
+    </div>
+  }
+</div>
