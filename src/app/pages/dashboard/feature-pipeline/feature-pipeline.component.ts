@@ -200,6 +200,35 @@ export class FeaturePipelineComponent implements OnInit, OnDestroy {
         next: (created) => {
           this.features.unshift(created);
           this.suggestions = this.suggestions.filter(s => s.title !== suggestion.title);
+
+          // Auto-accept and generate implementation prompt
+          if (created.id) {
+            this.featuresService.update(created.id, { status: 'accepted' as FeatureStatus })
+              .pipe(takeUntil(this.destroy$))
+              .subscribe({
+                next: (accepted) => {
+                  const idx = this.features.findIndex(f => f.id === created.id);
+                  if (idx !== -1) this.features[idx] = accepted;
+
+                  // Auto-generate implementation prompt
+                  this.generatingPromptId = created.id!;
+                  this.featuresService.generatePrompt(created.id!)
+                    .pipe(takeUntil(this.destroy$))
+                    .subscribe({
+                      next: (result) => {
+                        const i = this.features.findIndex(f => f.id === created.id);
+                        if (i !== -1) {
+                          this.features[i] = { ...this.features[i], implementation_prompt: result.prompt };
+                        }
+                        this.generatingPromptId = null;
+                      },
+                      error: () => {
+                        this.generatingPromptId = null;
+                      }
+                    });
+                }
+              });
+          }
         }
       });
   }
