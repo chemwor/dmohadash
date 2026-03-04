@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
-import { HoaIntelService, HoaNewsArticle, HoaNewsResponse } from '../../../core/services/hoa-intel.service';
+import { HoaIntelService, HoaNewsArticle, HoaNewsResponse, NotesAnalysisResponse } from '../../../core/services/hoa-intel.service';
 import { HOANewsService } from '../../../core/services/hoa-news.service';
 
 type SortOption = 'newest' | 'oldest' | 'relevance';
@@ -28,6 +28,17 @@ export class HoaIntelComponent implements OnInit, OnDestroy {
   activeCategory: string = '';
   sortBy: SortOption = 'newest';
 
+  // Notes
+  editingNotesId: string | null = null;
+  notesText = '';
+  savingNotes = false;
+
+  // Notes Analysis
+  showAnalysis = false;
+  loadingAnalysis = false;
+  analysisResult: NotesAnalysisResponse | null = null;
+  analysisError = '';
+
   categories = [
     { value: '', label: 'All Categories' },
     { value: 'legislation', label: 'Legislation' },
@@ -42,6 +53,7 @@ export class HoaIntelComponent implements OnInit, OnDestroy {
     { value: 'new', label: 'Unreviewed' },
     { value: 'reviewed', label: 'Reviewed' },
     { value: 'bookmarked', label: 'Bookmarked' },
+    { value: 'hasNotes', label: 'Has Notes' },
     { value: 'archived', label: 'Archived' }
   ];
 
@@ -70,6 +82,24 @@ export class HoaIntelComponent implements OnInit, OnDestroy {
         .subscribe({
           next: (data) => {
             this.articles = data.articles as any[];
+            this.applySorting();
+            this.loading = false;
+          },
+          error: (err) => {
+            this.loading = false;
+            this.error = err.message || 'Failed to load articles';
+          }
+        });
+      return;
+    }
+
+    // Has Notes filter
+    if (this.activeStatus === 'hasNotes') {
+      this.hoaIntelService.getArticlesWithNotes()
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (data: HoaNewsResponse) => {
+            this.articles = data.articles;
             this.applySorting();
             this.loading = false;
           },
@@ -281,5 +311,75 @@ export class HoaIntelComponent implements OnInit, OnDestroy {
 
   get bookmarkedCount(): number {
     return this.articles.filter(a => (a as any).bookmarked).length;
+  }
+
+  get notesCount(): number {
+    return this.articles.filter(a => a.notes).length;
+  }
+
+  // Notes methods
+  toggleNotes(article: HoaNewsArticle): void {
+    if (this.editingNotesId === article.id) {
+      this.editingNotesId = null;
+      this.notesText = '';
+    } else {
+      this.editingNotesId = article.id;
+      this.notesText = article.notes || '';
+    }
+  }
+
+  saveNotes(article: HoaNewsArticle): void {
+    this.savingNotes = true;
+    this.hoaIntelService.saveNotes(article.id, this.notesText)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          const idx = this.articles.findIndex(a => a.id === article.id);
+          if (idx !== -1) {
+            this.articles[idx] = { ...this.articles[idx], notes: this.notesText.trim() || null };
+          }
+          this.savingNotes = false;
+          this.editingNotesId = null;
+          this.notesText = '';
+        },
+        error: () => {
+          this.savingNotes = false;
+        }
+      });
+  }
+
+  // Notes Analysis
+  analyzeNotes(): void {
+    this.loadingAnalysis = true;
+    this.analysisError = '';
+    this.analysisResult = null;
+    this.showAnalysis = true;
+
+    this.hoaIntelService.analyzeNotes()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.analysisResult = result;
+          this.loadingAnalysis = false;
+        },
+        error: (err) => {
+          this.loadingAnalysis = false;
+          this.analysisError = err?.error?.error || 'Failed to analyze notes';
+        }
+      });
+  }
+
+  closeAnalysis(): void {
+    this.showAnalysis = false;
+    this.analysisResult = null;
+  }
+
+  getPriorityBadge(priority: string): string {
+    switch (priority) {
+      case 'high': return 'bg-red-500/20 text-red-400';
+      case 'medium': return 'bg-amber-500/20 text-amber-400';
+      case 'low': return 'bg-green-500/20 text-green-400';
+      default: return 'bg-slate-500/20 text-slate-400';
+    }
   }
 }

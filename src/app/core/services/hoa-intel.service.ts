@@ -21,6 +21,14 @@ export interface HoaNewsArticle {
   priority?: string;
   key_takeaways?: string[];
   status: 'new' | 'reviewed' | 'archived';
+  notes?: string | null;
+}
+
+export interface NotesAnalysisResponse {
+  feature_ideas: { title: string; description: string; priority: string }[];
+  key_points: string[];
+  business_analysis: string;
+  articles_analyzed: number;
 }
 
 export interface HoaNewsResponse {
@@ -64,6 +72,35 @@ export class HoaIntelService {
     return this.http.patch<{ article: HoaNewsArticle }>(this.apiUrl, { id, status }).pipe(
       catchError(error => {
         console.error('HOA intel status update error:', error);
+        throw error;
+      })
+    );
+  }
+
+  getArticlesWithNotes(): Observable<HoaNewsResponse> {
+    return this.http.get<HoaNewsResponse>(`${this.apiUrl}?hasNotes=true`).pipe(
+      catchError(error => {
+        console.error('HOA intel notes fetch error:', error);
+        return of({ articles: [], count: 0, lastUpdated: '' });
+      })
+    );
+  }
+
+  saveNotes(id: string, notes: string): Observable<{ success: boolean; article: HoaNewsArticle }> {
+    return this.http.patch<{ success: boolean; article: HoaNewsArticle }>(this.apiUrl, {
+      id, action: 'saveNotes', notes
+    }).pipe(
+      catchError(error => {
+        console.error('HOA intel save notes error:', error);
+        throw error;
+      })
+    );
+  }
+
+  analyzeNotes(): Observable<NotesAnalysisResponse> {
+    return this.http.post<NotesAnalysisResponse>(`${this.apiUrl}/analyze-notes`, {}).pipe(
+      catchError(error => {
+        console.error('HOA intel analyze notes error:', error);
         throw error;
       })
     );

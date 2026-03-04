@@ -6,16 +6,28 @@
         <h1 class="text-base md:text-lg font-bold text-slate-100">HOA News</h1>
         <span class="ml-2 text-xs text-slate-500 hidden sm:inline">Legislation, enforcement & industry updates</span>
       </div>
-      <button
-        (click)="scanNews()"
-        [disabled]="scanning"
-        class="px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 transition-colors disabled:opacity-50 flex items-center"
-      >
-        <svg class="w-4 h-4 md:mr-1.5" [class.animate-spin]="scanning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-        </svg>
-        <span class="hidden md:inline">{{ scanning ? 'Scanning...' : 'Scan News' }}</span>
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          (click)="analyzeNotes()"
+          [disabled]="loadingAnalysis"
+          class="px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg bg-teal-500 text-white hover:bg-teal-600 transition-colors disabled:opacity-50 flex items-center"
+        >
+          <svg class="w-4 h-4 md:mr-1.5" [class.animate-spin]="loadingAnalysis" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+          </svg>
+          <span class="hidden md:inline">{{ loadingAnalysis ? 'Analyzing...' : 'Analyze Notes' }}</span>
+        </button>
+        <button
+          (click)="scanNews()"
+          [disabled]="scanning"
+          class="px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 transition-colors disabled:opacity-50 flex items-center"
+        >
+          <svg class="w-4 h-4 md:mr-1.5" [class.animate-spin]="scanning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <span class="hidden md:inline">{{ scanning ? 'Scanning...' : 'Scan News' }}</span>
+        </button>
+      </div>
     </div>
   </div>
 </header>
@@ -63,6 +75,101 @@
 </div>
 
 <main class="px-4 sm:px-6 lg:px-8 py-4 md:py-6">
+  <!-- Notes Analysis Panel -->
+  @if (showAnalysis) {
+    <div class="mb-6 bg-slate-800 rounded-xl border border-teal-500/30 p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-bold text-teal-400 flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+          </svg>
+          Notes Analysis
+        </h3>
+        <button (click)="closeAnalysis()" class="text-slate-500 hover:text-slate-300 transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Loading -->
+      @if (loadingAnalysis) {
+        <div class="flex items-center justify-center py-8">
+          <div class="flex flex-col items-center gap-3">
+            <svg class="animate-spin h-8 w-8 text-teal-400" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-sm text-slate-400">Analyzing your notes... This may take 10-15 seconds</p>
+          </div>
+        </div>
+      }
+
+      <!-- Error -->
+      @if (analysisError) {
+        <div class="text-center py-6">
+          <p class="text-red-400 text-sm mb-3">{{ analysisError }}</p>
+          <button (click)="analyzeNotes()" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-teal-500 text-white hover:bg-teal-600 transition-colors">
+            Retry
+          </button>
+        </div>
+      }
+
+      <!-- Results -->
+      @if (analysisResult) {
+        <div class="space-y-5">
+          <!-- Feature Ideas -->
+          @if (analysisResult.feature_ideas.length > 0) {
+            <div>
+              <h4 class="text-xs font-semibold text-slate-300 uppercase mb-2">Feature Ideas</h4>
+              <div class="grid gap-2">
+                @for (idea of analysisResult.feature_ideas; track idea.title) {
+                  <div class="bg-slate-700/50 rounded-lg p-3">
+                    <div class="flex items-center gap-2 mb-1">
+                      <span class="text-sm font-medium text-slate-200">{{ idea.title }}</span>
+                      <span [class]="'text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ' + getPriorityBadge(idea.priority)">
+                        {{ idea.priority }}
+                      </span>
+                    </div>
+                    <p class="text-xs text-slate-400">{{ idea.description }}</p>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Key Points -->
+          @if (analysisResult.key_points.length > 0) {
+            <div>
+              <h4 class="text-xs font-semibold text-slate-300 uppercase mb-2">Key Points</h4>
+              <ul class="space-y-1.5">
+                @for (point of analysisResult.key_points; track $index) {
+                  <li class="text-sm text-slate-400 flex items-start">
+                    <span class="text-teal-400 mr-2 mt-0.5 flex-shrink-0">&bull;</span>
+                    {{ point }}
+                  </li>
+                }
+              </ul>
+            </div>
+          }
+
+          <!-- Business Analysis -->
+          @if (analysisResult.business_analysis) {
+            <div>
+              <h4 class="text-xs font-semibold text-slate-300 uppercase mb-2">Business Analysis</h4>
+              <p class="text-sm text-slate-400 leading-relaxed">{{ analysisResult.business_analysis }}</p>
+            </div>
+          }
+
+          <!-- Footer -->
+          <p class="text-xs text-slate-500 pt-2 border-t border-slate-700">
+            Based on notes from {{ analysisResult.articles_analyzed }} articles
+          </p>
+        </div>
+      }
+    </div>
+  }
+
   <!-- Loading State -->
   @if (loading && articles.length === 0) {
     <div class="space-y-3">
@@ -235,6 +342,21 @@
               </a>
             }
 
+            <!-- Notes -->
+            <button
+              (click)="toggleNotes(article)"
+              [class]="editingNotesId === article.id
+                ? 'px-3 py-1.5 text-xs font-medium rounded-lg bg-teal-500/20 text-teal-400 hover:bg-teal-500/30 transition-colors min-h-[36px] flex items-center gap-1.5'
+                : article.notes
+                  ? 'px-3 py-1.5 text-xs font-medium rounded-lg bg-teal-500/20 text-teal-400 hover:bg-teal-500/30 transition-colors min-h-[36px] flex items-center gap-1.5'
+                  : 'px-3 py-1.5 text-xs font-medium rounded-lg text-slate-500 hover:text-teal-400 hover:bg-slate-700 transition-colors min-h-[36px] flex items-center gap-1.5'"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
+              {{ article.notes ? 'Edit Notes' : 'Add Notes' }}
+            </button>
+
             <!-- Bookmark -->
             <button
               (click)="toggleBookmark(article)"
@@ -276,6 +398,41 @@
               Dismiss
             </button>
           </div>
+
+          <!-- Notes Preview (when not editing) -->
+          @if (article.notes && editingNotesId !== article.id) {
+            <div class="mt-3 p-3 bg-teal-500/5 border border-teal-500/20 rounded-lg">
+              <p class="text-xs font-semibold text-teal-400 mb-1">Notes</p>
+              <p class="text-xs text-slate-400 whitespace-pre-wrap line-clamp-3">{{ article.notes }}</p>
+            </div>
+          }
+
+          <!-- Notes Editor -->
+          @if (editingNotesId === article.id) {
+            <div class="mt-3 p-3 bg-slate-700/50 border border-teal-500/30 rounded-lg">
+              <textarea
+                [(ngModel)]="notesText"
+                placeholder="Add your notes about this article..."
+                class="w-full bg-slate-800 border border-slate-600 rounded-lg p-2.5 text-sm text-slate-300 placeholder-slate-500 focus:ring-teal-500 focus:border-teal-500 resize-y"
+                rows="4"
+              ></textarea>
+              <div class="flex items-center gap-2 mt-2">
+                <button
+                  (click)="saveNotes(article)"
+                  [disabled]="savingNotes"
+                  class="px-3 py-1.5 text-xs font-medium rounded-lg bg-teal-500 text-white hover:bg-teal-600 transition-colors disabled:opacity-50"
+                >
+                  {{ savingNotes ? 'Saving...' : 'Save Notes' }}
+                </button>
+                <button
+                  (click)="editingNotesId = null; notesText = ''"
+                  class="px-3 py-1.5 text-xs font-medium rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-600 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          }
         </div>
       }
     </div>
