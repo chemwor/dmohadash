@@ -33,11 +33,31 @@ export interface GeographicInsights {
   expansion_opportunities: string;
 }
 
+export interface PreviewThemes {
+  dominant_risk_patterns: string[];
+  urgency_indicators: string[];
+  most_valued_features: string[];
+}
+
 export interface TrendsSummary {
   most_common_violations: ViolationTrend[];
   highest_converting_cases: ConvertingCase[];
   seasonal_patterns: SeasonalPatterns;
   geographic_insights: GeographicInsights;
+  preview_themes?: PreviewThemes;
+}
+
+export interface FunnelHealth {
+  landing_to_preview: string;
+  preview_to_purchase: string;
+  biggest_drop_off: string;
+  recommended_fix: string;
+}
+
+export interface AdEfficiency {
+  cpa_assessment: string;
+  ctr_assessment: string;
+  recommendation: string;
 }
 
 export interface ConversionAnalysis {
@@ -45,6 +65,8 @@ export interface ConversionAnalysis {
   best_performing_segment: string;
   worst_performing_segment: string;
   improvement_opportunities: string[];
+  funnel_health?: FunnelHealth;
+  ad_efficiency?: AdEfficiency;
 }
 
 export interface FeatureSuggestion {
@@ -54,11 +76,18 @@ export interface FeatureSuggestion {
   expected_impact: string;
 }
 
+export interface CaseThemeAnalysis {
+  top_themes: string[];
+  emerging_patterns: string[];
+  underserved_violations: string[];
+}
+
 export interface ProductResearchInsights {
   customer_pain_points: string[];
   unmet_needs: string[];
   content_opportunities: string[];
   partnership_opportunities: string[];
+  case_theme_analysis?: CaseThemeAnalysis;
 }
 
 export interface RiskCategory {
@@ -85,6 +114,21 @@ export interface StrategicRecommendation {
   category: 'marketing' | 'product' | 'content' | 'operations';
   priority: Priority;
   expected_outcome: string;
+  data_basis?: string;
+}
+
+export interface EngagementHealth {
+  bounce_rate_assessment: string;
+  time_on_page_assessment: string;
+  ux_issues: string[];
+  performance_impact: string;
+  overall_grade: string;
+}
+
+export interface NewsContextAnalysis {
+  relevant_trends: string[];
+  opportunities: string[];
+  risks: string[];
 }
 
 export interface FullAnalysis {
@@ -95,11 +139,13 @@ export interface FullAnalysis {
   risk_assessment: RiskAssessment;
   strategic_recommendations: StrategicRecommendation[];
   executive_summary: string;
+  engagement_health?: EngagementHealth;
+  news_context?: NewsContextAnalysis;
 }
 
 export interface RawData {
   violationTypes: Record<string, any>;
-  seasonalTrends: {
+  seasonalTrends?: {
     byMonth: Record<string, number>;
     byDayOfWeek: Record<string, number>;
     peakMonth: string;
@@ -107,20 +153,47 @@ export interface RawData {
   };
   conversionFunnel: {
     totalCases: number;
-    unlockedCases: number;
-    completedCases: number;
-    overallConversionRate: string;
+    paidCases?: number;
+    unlockedCases?: number;
+    completedCases?: number;
+    totalRevenue?: number;
+    overallConversionRate: number | string;
   };
   geography: {
-    topStates: Array<{ state: string; total: number; revenue: number }>;
+    topStates: Array<{ state: string; total?: number; count?: number; revenue: number }>;
   };
-  documentStats: {
+  documentStats?: {
     total: number;
     avgDocsPerCase: string;
   };
-  messageStats: {
+  messageStats?: {
     total: number;
     avgMsgsPerCase: string;
+  };
+  previewInsights?: {
+    totalPreviews: number;
+    sampleHeadlines: string[];
+    commonRisks: string[];
+    deadlinePatterns: string[];
+  };
+  businessSnapshot?: {
+    revenueToday: number;
+    revenueWeek: number;
+    revenueMonth: number;
+    adCPA: number;
+    adCTR: number;
+    emailProfiles: number;
+  };
+  posthogMetrics?: {
+    bounceRate: number;
+    avgTimeOnPage: number;
+    pagesPerSession: number;
+    rageClicks: number;
+    funnel: Record<string, any>;
+  };
+  newsContext?: {
+    articleCount: number;
+    recentTitles: string[];
   };
 }
 

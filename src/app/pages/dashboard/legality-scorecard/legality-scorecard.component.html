@@ -138,6 +138,71 @@
         </div>
       </section>
 
+      <!-- Live Business Context -->
+      @if (hasBusinessSnapshot() || hasPosthogData()) {
+        <section class="mb-6">
+          <h2 class="section-header">Live Business Context</h2>
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            @if (hasBusinessSnapshot()) {
+              <div class="card">
+                <p class="text-xs text-slate-400 mb-1">Revenue (Month)</p>
+                <p class="text-2xl font-bold text-green-400">${{ getRevenueMonth() | number:'1.0-0' }}</p>
+                <p class="text-xs text-slate-500 mt-1">Week: ${{ getRevenueWeek() | number:'1.0-0' }}</p>
+              </div>
+              <div class="card">
+                <p class="text-xs text-slate-400 mb-1">Ad Efficiency</p>
+                <p class="text-2xl font-bold" [class.text-green-400]="getAdCPA() < 15" [class.text-amber-400]="getAdCPA() >= 15 && getAdCPA() < 30" [class.text-red-400]="getAdCPA() >= 30">${{ getAdCPA() | number:'1.2-2' }}</p>
+                <p class="text-xs text-slate-500 mt-1">CPA | CTR: {{ getAdCTR() | number:'1.1-1' }}%</p>
+              </div>
+            }
+            @if (hasPosthogData()) {
+              <div class="card">
+                <p class="text-xs text-slate-400 mb-1">Bounce Rate</p>
+                <p class="text-2xl font-bold" [class.text-green-400]="getBounceRate() < 50" [class.text-amber-400]="getBounceRate() >= 50 && getBounceRate() < 70" [class.text-red-400]="getBounceRate() >= 70">{{ getBounceRate() | number:'1.0-0' }}%</p>
+                <p class="text-xs text-slate-500 mt-1">Avg time: {{ getAvgTimeOnPage() | number:'1.0-0' }}s</p>
+              </div>
+              <div class="card">
+                <p class="text-xs text-slate-400 mb-1">UX Issues</p>
+                <p class="text-2xl font-bold text-amber-400">{{ getRageClicks() }}</p>
+                <p class="text-xs text-slate-500 mt-1">Rage clicks detected</p>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- Engagement Health -->
+      @if (getEngagementHealth()) {
+        <section class="mb-6">
+          <h2 class="section-header">Engagement Health</h2>
+          <div class="card">
+            <div class="flex items-center gap-4 mb-4">
+              <div class="text-center px-4">
+                <p class="text-3xl font-bold" [class]="getGradeColor(getEngagementGrade())">{{ getEngagementGrade() }}</p>
+                <p class="text-xs text-slate-500">Overall Grade</p>
+              </div>
+              <div class="flex-1 space-y-2">
+                <p class="text-sm text-slate-400">{{ getEngagementHealth().bounce_rate_assessment }}</p>
+                <p class="text-sm text-slate-400">{{ getEngagementHealth().time_on_page_assessment }}</p>
+                @if (getEngagementHealth().performance_impact) {
+                  <p class="text-sm text-amber-400">{{ getEngagementHealth().performance_impact }}</p>
+                }
+              </div>
+            </div>
+            @if (getUXIssues().length > 0) {
+              <div class="border-t border-slate-700 pt-3">
+                <p class="text-xs text-slate-400 mb-2">UX Issues Identified:</p>
+                <div class="flex flex-wrap gap-2">
+                  @for (issue of getUXIssues(); track issue) {
+                    <span class="px-2 py-1 bg-red-500/10 text-red-400 rounded text-xs">{{ issue }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
       <!-- Risk Overview -->
       <section class="mb-6">
         <h2 class="section-header">Risk Overview</h2>
@@ -459,6 +524,152 @@
           </div>
         </section>
       }
+
+      <!-- Funnel Health -->
+      @if (getFunnelHealth()) {
+        <section class="mb-6">
+          <h2 class="section-header">Funnel Health</h2>
+          <div class="card">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div class="text-center p-4 bg-slate-800 rounded-lg">
+                <p class="text-xs text-slate-400 mb-1">Landing → Preview</p>
+                <p class="text-lg font-medium text-slate-200">{{ getFunnelHealth().landing_to_preview }}</p>
+              </div>
+              <div class="text-center p-4 bg-slate-800 rounded-lg">
+                <p class="text-xs text-slate-400 mb-1">Preview → Purchase</p>
+                <p class="text-lg font-medium text-slate-200">{{ getFunnelHealth().preview_to_purchase }}</p>
+              </div>
+              <div class="text-center p-4 bg-slate-800 rounded-lg">
+                <p class="text-xs text-slate-400 mb-1">Biggest Drop-off</p>
+                <p class="text-lg font-medium text-red-400">{{ getFunnelHealth().biggest_drop_off }}</p>
+              </div>
+            </div>
+            @if (getFunnelHealth().recommended_fix) {
+              <div class="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
+                <p class="text-sm text-indigo-300">Recommended Fix: {{ getFunnelHealth().recommended_fix }}</p>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- Ad Efficiency -->
+      @if (getAdEfficiency()) {
+        <section class="mb-6">
+          <h2 class="section-header">Ad Efficiency</h2>
+          <div class="card">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p class="text-xs text-slate-400 mb-1">CPA Assessment</p>
+                <p class="text-sm text-slate-300">{{ getAdEfficiency().cpa_assessment }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-400 mb-1">CTR Assessment</p>
+                <p class="text-sm text-slate-300">{{ getAdEfficiency().ctr_assessment }}</p>
+              </div>
+            </div>
+            @if (getAdEfficiency().recommendation) {
+              <div class="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <p class="text-sm text-green-300">{{ getAdEfficiency().recommendation }}</p>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
+      <!-- HOA Industry Trends -->
+      @if (getNewsAnalysis()) {
+        <section class="mb-6">
+          <h2 class="section-header">HOA Industry Trends</h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="card">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                  </svg>
+                </div>
+                <h4 class="text-sm font-medium text-slate-100">Relevant Trends</h4>
+              </div>
+              @if (getNewsTrends().length > 0) {
+                <ul class="space-y-2">
+                  @for (trend of getNewsTrends(); track trend) {
+                    <li class="text-sm text-slate-400 flex items-start gap-2">
+                      <span class="text-blue-400 mt-1 flex-shrink-0">-</span>
+                      {{ trend }}
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="text-sm text-slate-500">No trends identified</p>
+              }
+            </div>
+            <div class="card">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                  </svg>
+                </div>
+                <h4 class="text-sm font-medium text-slate-100">Opportunities</h4>
+              </div>
+              @if (getNewsOpportunities().length > 0) {
+                <ul class="space-y-2">
+                  @for (opp of getNewsOpportunities(); track opp) {
+                    <li class="text-sm text-slate-400 flex items-start gap-2">
+                      <span class="text-green-400 mt-1 flex-shrink-0">-</span>
+                      {{ opp }}
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="text-sm text-slate-500">No opportunities identified</p>
+              }
+            </div>
+            <div class="card">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                  </svg>
+                </div>
+                <h4 class="text-sm font-medium text-slate-100">Risks</h4>
+              </div>
+              @if (getNewsAnalysis().risks?.length > 0) {
+                <ul class="space-y-2">
+                  @for (risk of (getNewsAnalysis().risks || []); track risk) {
+                    <li class="text-sm text-slate-400 flex items-start gap-2">
+                      <span class="text-red-400 mt-1 flex-shrink-0">-</span>
+                      {{ risk }}
+                    </li>
+                  }
+                </ul>
+              } @else {
+                <p class="text-sm text-slate-500">No risks identified</p>
+              }
+            </div>
+          </div>
+        </section>
+      }
+
+      <!-- Recent News Headlines -->
+      @if (hasNewsContext()) {
+        <section class="mb-6">
+          <h2 class="section-header">Recent HOA News ({{ getNewsArticleCount() }} articles)</h2>
+          <div class="card">
+            <div class="space-y-2">
+              @for (title of getRecentNewsTitles(); track title) {
+                <div class="flex items-start gap-2 text-sm">
+                  <svg class="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/>
+                  </svg>
+                  <span class="text-slate-400">{{ title }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        </section>
+      }
     }
 
     <!-- Product Insights Tab -->
@@ -595,6 +806,97 @@
           </div>
         </section>
       }
+
+      <!-- Case Theme Analysis -->
+      @if (getCaseThemeAnalysis()) {
+        <section class="mb-6">
+          <h2 class="section-header">Case Theme Analysis (from Preview Data)</h2>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="card">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-8 h-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                  </svg>
+                </div>
+                <h4 class="text-sm font-medium text-slate-100">Top Themes</h4>
+              </div>
+              <ul class="space-y-2">
+                @for (theme of (getCaseThemeAnalysis().top_themes || []); track theme) {
+                  <li class="text-sm text-slate-400 flex items-start gap-2">
+                    <span class="text-indigo-400 mt-1 flex-shrink-0">-</span>
+                    {{ theme }}
+                  </li>
+                }
+              </ul>
+            </div>
+            <div class="card">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-8 h-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                  </svg>
+                </div>
+                <h4 class="text-sm font-medium text-slate-100">Emerging Patterns</h4>
+              </div>
+              <ul class="space-y-2">
+                @for (pattern of (getCaseThemeAnalysis().emerging_patterns || []); track pattern) {
+                  <li class="text-sm text-slate-400 flex items-start gap-2">
+                    <span class="text-amber-400 mt-1 flex-shrink-0">-</span>
+                    {{ pattern }}
+                  </li>
+                }
+              </ul>
+            </div>
+            <div class="card">
+              <div class="flex items-center gap-2 mb-3">
+                <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                  <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+                <h4 class="text-sm font-medium text-slate-100">Underserved Violations</h4>
+              </div>
+              <ul class="space-y-2">
+                @for (violation of (getCaseThemeAnalysis().underserved_violations || []); track violation) {
+                  <li class="text-sm text-slate-400 flex items-start gap-2">
+                    <span class="text-purple-400 mt-1 flex-shrink-0">-</span>
+                    {{ violation }}
+                  </li>
+                }
+              </ul>
+            </div>
+          </div>
+        </section>
+      }
+
+      <!-- Real Case Insights from Preview Data -->
+      @if (hasPreviewInsights()) {
+        <section class="mb-6">
+          <h2 class="section-header">Real Case Insights ({{ rawData?.previewInsights?.totalPreviews }} previews analyzed)</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="card">
+              <h4 class="text-sm font-medium text-slate-100 mb-3">Sample Case Headlines</h4>
+              <div class="space-y-2">
+                @for (headline of getPreviewHeadlines(); track headline) {
+                  <p class="text-sm text-slate-400 border-l-2 border-indigo-500/30 pl-3">{{ headline }}</p>
+                }
+              </div>
+            </div>
+            <div class="card">
+              <h4 class="text-sm font-medium text-slate-100 mb-3">Common Risks Customers Face</h4>
+              <div class="space-y-2">
+                @for (risk of getCommonRisks(); track risk) {
+                  <div class="flex items-start gap-2 text-sm">
+                    <span class="text-red-400 flex-shrink-0 mt-0.5">!</span>
+                    <span class="text-slate-400">{{ risk }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        </section>
+      }
     }
 
     <!-- Recommendations Tab -->
@@ -631,6 +933,9 @@
                           </span>
                           <span class="text-xs text-slate-500">{{ rec.expected_outcome }}</span>
                         </div>
+                        @if (getDataBasis(rec)) {
+                          <p class="text-xs text-indigo-400/70 mt-1 italic">Based on: {{ getDataBasis(rec) }}</p>
+                        }
                       </div>
                     </div>
                   }
@@ -661,6 +966,9 @@
                           </span>
                           <span class="text-xs text-slate-500">{{ rec.expected_outcome }}</span>
                         </div>
+                        @if (getDataBasis(rec)) {
+                          <p class="text-xs text-indigo-400/70 mt-1 italic">Based on: {{ getDataBasis(rec) }}</p>
+                        }
                       </div>
                     </div>
                   }
@@ -691,6 +999,9 @@
                           </span>
                           <span class="text-xs text-slate-500">{{ rec.expected_outcome }}</span>
                         </div>
+                        @if (getDataBasis(rec)) {
+                          <p class="text-xs text-indigo-400/70 mt-1 italic">Based on: {{ getDataBasis(rec) }}</p>
+                        }
                       </div>
                     </div>
                   }
@@ -721,6 +1032,9 @@
                           </span>
                           <span class="text-xs text-slate-500">{{ rec.expected_outcome }}</span>
                         </div>
+                        @if (getDataBasis(rec)) {
+                          <p class="text-xs text-indigo-400/70 mt-1 italic">Based on: {{ getDataBasis(rec) }}</p>
+                        }
                       </div>
                     </div>
                   }

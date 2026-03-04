@@ -210,4 +210,128 @@ export class LegalityScorecardComponent implements OnInit, OnDestroy {
     if (!geo) return 'No geographic data available';
     return geo.expansion_opportunities || `Top states: ${geo.top_states?.join(', ')}`;
   }
+
+  // --- Enriched Data Getters ---
+
+  // Business Snapshot
+  getRevenueMonth(): number {
+    return this.rawData?.businessSnapshot?.revenueMonth || 0;
+  }
+
+  getRevenueWeek(): number {
+    return this.rawData?.businessSnapshot?.revenueWeek || 0;
+  }
+
+  getAdCPA(): number {
+    return this.rawData?.businessSnapshot?.adCPA || 0;
+  }
+
+  getAdCTR(): number {
+    return this.rawData?.businessSnapshot?.adCTR || 0;
+  }
+
+  hasBusinessSnapshot(): boolean {
+    return !!(this.rawData?.businessSnapshot && this.rawData.businessSnapshot.revenueMonth > 0);
+  }
+
+  // PostHog
+  getBounceRate(): number {
+    return this.rawData?.posthogMetrics?.bounceRate || 0;
+  }
+
+  getAvgTimeOnPage(): number {
+    return this.rawData?.posthogMetrics?.avgTimeOnPage || 0;
+  }
+
+  getRageClicks(): number {
+    return this.rawData?.posthogMetrics?.rageClicks || 0;
+  }
+
+  hasPosthogData(): boolean {
+    return !!(this.rawData?.posthogMetrics && (this.rawData.posthogMetrics.bounceRate > 0 || this.rawData.posthogMetrics.avgTimeOnPage > 0));
+  }
+
+  // Preview Insights
+  getPreviewHeadlines(): string[] {
+    return this.rawData?.previewInsights?.sampleHeadlines || [];
+  }
+
+  getCommonRisks(): string[] {
+    return this.rawData?.previewInsights?.commonRisks || [];
+  }
+
+  hasPreviewInsights(): boolean {
+    return !!(this.rawData?.previewInsights && this.rawData.previewInsights.totalPreviews > 0);
+  }
+
+  // News Context
+  getNewsArticleCount(): number {
+    return this.rawData?.newsContext?.articleCount || 0;
+  }
+
+  getRecentNewsTitles(): string[] {
+    return this.rawData?.newsContext?.recentTitles || [];
+  }
+
+  hasNewsContext(): boolean {
+    return !!(this.rawData?.newsContext && this.rawData.newsContext.articleCount > 0);
+  }
+
+  // AI Analysis: Engagement Health
+  getEngagementHealth(): any {
+    return this.analysis?.engagement_health || null;
+  }
+
+  getEngagementGrade(): string {
+    return this.analysis?.engagement_health?.overall_grade || 'N/A';
+  }
+
+  getUXIssues(): string[] {
+    return this.analysis?.engagement_health?.ux_issues || [];
+  }
+
+  // AI Analysis: Funnel & Ads
+  getFunnelHealth(): any {
+    return this.analysis?.conversion_analysis?.funnel_health || null;
+  }
+
+  getAdEfficiency(): any {
+    return this.analysis?.conversion_analysis?.ad_efficiency || null;
+  }
+
+  // AI Analysis: News
+  getNewsAnalysis(): any {
+    return this.analysis?.news_context || null;
+  }
+
+  getNewsTrends(): string[] {
+    return this.analysis?.news_context?.relevant_trends || [];
+  }
+
+  getNewsOpportunities(): string[] {
+    return this.analysis?.news_context?.opportunities || [];
+  }
+
+  // AI Analysis: Preview Themes
+  getPreviewThemes(): any {
+    return this.analysis?.trends_summary?.preview_themes || null;
+  }
+
+  // AI Analysis: Case Themes
+  getCaseThemeAnalysis(): any {
+    return this.analysis?.product_research_insights?.case_theme_analysis || null;
+  }
+
+  // Recommendation data basis
+  getDataBasis(rec: StrategicRecommendation): string {
+    return (rec as any).data_basis || '';
+  }
+
+  // Grade color utility
+  getGradeColor(grade: string): string {
+    const g = (grade || '').toLowerCase();
+    if (['a', 'excellent', 'good'].some(v => g.includes(v))) return 'text-green-400';
+    if (['b', 'fair', 'average', 'moderate'].some(v => g.includes(v))) return 'text-amber-400';
+    return 'text-red-400';
+  }
 }
