@@ -19,7 +19,7 @@ export class CostTrackerComponent implements OnInit, OnDestroy {
   data: CostsData | null = null;
   loading = false;
   error = '';
-  selectedPeriod: 'today' | 'week' | 'month' = 'month';
+  selectedPeriod: 'today' | 'week' | 'month' = 'today';
 
   periods = [
     { value: 'today' as const, label: 'Today' },

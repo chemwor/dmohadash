@@ -85,6 +85,10 @@ export const routes: Routes = [
       {
         path: 'blog-manager',
         loadComponent: () => import('./pages/dashboard/blog-manager/blog-manager.component').then(m => m.BlogManagerComponent)
+      },
+      {
+        path: 'statutes',
+        loadComponent: () => import('./pages/dashboard/statutes/statutes.component').then(m => m.StatutesComponent)
       }
     ]
   },
