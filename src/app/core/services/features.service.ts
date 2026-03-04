@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, catchError, of } from 'rxjs';
-import { FeatureRequest, FeatureStatus, FeaturePromptResponse } from '../../interfaces/dashboard.interfaces';
+import { FeatureRequest, FeatureStatus, FeaturePromptResponse, FeatureSuggestionsResponse } from '../../interfaces/dashboard.interfaces';
 
 @Injectable({
   providedIn: 'root'
@@ -45,6 +45,15 @@ export class FeaturesService {
     return this.http.post<FeaturePromptResponse>(`${this.apiUrl}/${id}/prompt`, {}).pipe(
       catchError(error => {
         console.error('Feature prompt generation error:', error);
+        throw error;
+      })
+    );
+  }
+
+  getSuggestions(): Observable<FeatureSuggestionsResponse> {
+    return this.http.post<FeatureSuggestionsResponse>(`${this.apiUrl}/suggestions`, {}).pipe(
+      catchError(error => {
+        console.error('Feature suggestions error:', error);
         throw error;
       })
     );

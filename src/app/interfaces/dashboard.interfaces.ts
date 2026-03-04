@@ -279,6 +279,26 @@ export interface FeaturePromptResponse {
   };
 }
 
+// --- AI Feature Suggestions ---
+export interface FeatureSuggestion {
+  title: string;
+  description: string;
+  category: string;
+  target_repo: string;
+  estimated_effort: string;
+  priority: string;
+  data_basis: string;
+}
+
+export interface FeatureSuggestionsResponse {
+  suggestions: FeatureSuggestion[];
+  data_sources: string[];
+  tokens_used: {
+    input: number;
+    output: number;
+  };
+}
+
 // --- Document References ---
 export interface DocReference {
   id?: string;

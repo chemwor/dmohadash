@@ -5,15 +5,35 @@
       <div class="flex items-center min-w-0">
         <h1 class="text-base md:text-lg font-bold text-slate-100">Feature Pipeline</h1>
       </div>
-      <button
-        (click)="toggleAddForm()"
-        class="px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 transition-colors flex items-center"
-      >
-        <svg class="w-4 h-4 md:mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-        </svg>
-        <span class="hidden md:inline">Add Feature</span>
-      </button>
+      <div class="flex items-center space-x-2">
+        <button
+          (click)="generateSuggestions()"
+          [disabled]="loadingSuggestions"
+          class="px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors flex items-center disabled:opacity-50"
+        >
+          @if (loadingSuggestions) {
+            <svg class="w-4 h-4 mr-1.5 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="hidden md:inline">Analyzing...</span>
+          } @else {
+            <svg class="w-4 h-4 md:mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
+            <span class="hidden md:inline">AI Suggestions</span>
+          }
+        </button>
+        <button
+          (click)="toggleAddForm()"
+          class="px-3 py-1.5 text-xs md:text-sm font-medium rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 transition-colors flex items-center"
+        >
+          <svg class="w-4 h-4 md:mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          <span class="hidden md:inline">Add Feature</span>
+        </button>
+      </div>
     </div>
   </div>
 </header>
@@ -93,6 +113,95 @@
           </button>
         </div>
       </div>
+    </div>
+  }
+
+  <!-- AI Suggestions Panel -->
+  @if (showSuggestions) {
+    <div class="mb-4 bg-slate-800 rounded-xl border border-purple-500/30 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <div>
+          <h3 class="text-sm font-semibold text-slate-100 flex items-center">
+            <svg class="w-4 h-4 mr-1.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
+            AI Feature Suggestions
+          </h3>
+          @if (suggestionsDataSources.length > 0 && !loadingSuggestions) {
+            <p class="text-xs text-slate-500 mt-0.5">Based on: {{ suggestionsDataSources.join(', ') }}</p>
+          }
+        </div>
+        <button (click)="closeSuggestions()" class="text-slate-400 hover:text-slate-200">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+
+      @if (loadingSuggestions) {
+        <div class="text-center py-6">
+          <svg class="w-6 h-6 animate-spin text-purple-400 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p class="text-sm text-slate-400">Analyzing dashboard data and generating suggestions...</p>
+          <p class="text-xs text-slate-500 mt-1">This may take 10-15 seconds</p>
+        </div>
+      }
+
+      @if (suggestionsError) {
+        <div class="text-center py-4">
+          <p class="text-sm text-red-400">{{ suggestionsError }}</p>
+          <button (click)="generateSuggestions()" class="mt-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors">Retry</button>
+        </div>
+      }
+
+      @if (suggestions.length > 0) {
+        <div class="space-y-3">
+          @for (suggestion of suggestions; track suggestion.title) {
+            <div class="bg-slate-900 rounded-lg border border-slate-700 p-3">
+              <div class="flex items-start justify-between mb-1.5">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center space-x-2 mb-1 flex-wrap gap-y-1">
+                    <span [class]="'text-[10px] font-semibold uppercase px-2 py-0.5 rounded ' + getCategoryBadge(suggestion.category)">{{ suggestion.category }}</span>
+                    <h4 class="text-sm font-semibold text-slate-100">{{ suggestion.title }}</h4>
+                  </div>
+                  <div class="flex items-center space-x-2 text-xs text-slate-500 flex-wrap gap-y-1">
+                    <span>{{ suggestion.target_repo }}</span>
+                    <span>&middot;</span>
+                    <span>{{ suggestion.estimated_effort }} effort</span>
+                    <span>&middot;</span>
+                    <span [class]="getPriorityColor(suggestion.priority)">{{ suggestion.priority }} priority</span>
+                  </div>
+                </div>
+              </div>
+              <p class="text-sm text-slate-400 mb-2">{{ suggestion.description }}</p>
+              <p class="text-xs text-slate-500 italic mb-3">Based on: {{ suggestion.data_basis }}</p>
+              <div class="flex items-center space-x-2">
+                <button
+                  (click)="approveSuggestion(suggestion)"
+                  class="px-3 py-1.5 text-xs font-medium rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors min-h-[44px] flex items-center"
+                >
+                  <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                  Add to Pipeline
+                </button>
+                <button
+                  (click)="dismissSuggestion(suggestion)"
+                  class="px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-700 text-slate-400 hover:bg-slate-600 transition-colors min-h-[44px] flex items-center"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      @if (!loadingSuggestions && !suggestionsError && suggestions.length === 0) {
+        <p class="text-sm text-slate-400 text-center py-4">All suggestions reviewed. Generate again for fresh ideas.</p>
+      }
     </div>
   }
 

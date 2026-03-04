@@ -5,7 +5,7 @@ import { Subject, takeUntil } from 'rxjs';
 
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { FeaturesService } from '../../../core/services/features.service';
-import { FeatureRequest, FeatureStatus } from '../../../interfaces/dashboard.interfaces';
+import { FeatureRequest, FeatureStatus, FeatureSuggestion } from '../../../interfaces/dashboard.interfaces';
 
 @Component({
   selector: 'app-feature-pipeline',
@@ -25,6 +25,13 @@ export class FeaturePipelineComponent implements OnInit, OnDestroy {
   showPromptModal = false;
   promptModalContent = '';
   generatingPromptId: string | null = null;
+
+  // AI Suggestions
+  showSuggestions = false;
+  loadingSuggestions = false;
+  suggestions: FeatureSuggestion[] = [];
+  suggestionsDataSources: string[] = [];
+  suggestionsError = '';
 
   // Add form model
   newFeature = {
@@ -155,5 +162,67 @@ export class FeaturePipelineComponent implements OnInit, OnDestroy {
 
   getCountByStatus(status: string): number {
     return this.features.filter(f => f.status === status).length;
+  }
+
+  // AI Suggestions
+  generateSuggestions(): void {
+    this.loadingSuggestions = true;
+    this.suggestionsError = '';
+    this.suggestions = [];
+    this.showSuggestions = true;
+
+    this.featuresService.getSuggestions()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.suggestions = result.suggestions;
+          this.suggestionsDataSources = result.data_sources;
+          this.loadingSuggestions = false;
+        },
+        error: (err) => {
+          this.loadingSuggestions = false;
+          this.suggestionsError = err?.error?.error || 'Failed to generate suggestions';
+        }
+      });
+  }
+
+  approveSuggestion(suggestion: FeatureSuggestion): void {
+    this.featuresService.create({
+      title: suggestion.title,
+      description: suggestion.description,
+      target_repo: suggestion.target_repo,
+      estimated_effort: suggestion.estimated_effort,
+      priority: suggestion.priority,
+      source: 'ai_suggestion'
+    })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (created) => {
+          this.features.unshift(created);
+          this.suggestions = this.suggestions.filter(s => s.title !== suggestion.title);
+        }
+      });
+  }
+
+  dismissSuggestion(suggestion: FeatureSuggestion): void {
+    this.suggestions = this.suggestions.filter(s => s.title !== suggestion.title);
+  }
+
+  closeSuggestions(): void {
+    this.showSuggestions = false;
+    this.suggestions = [];
+  }
+
+  getCategoryBadge(category: string): string {
+    const badges: Record<string, string> = {
+      'homepage': 'bg-purple-500/20 text-purple-400',
+      'conversion': 'bg-green-500/20 text-green-400',
+      'performance': 'bg-red-500/20 text-red-400',
+      'content': 'bg-cyan-500/20 text-cyan-400',
+      'marketing': 'bg-amber-500/20 text-amber-400',
+      'ux': 'bg-pink-500/20 text-pink-400',
+      'product': 'bg-blue-500/20 text-blue-400',
+    };
+    return badges[category] || 'bg-slate-500/20 text-slate-400';
   }
 }
