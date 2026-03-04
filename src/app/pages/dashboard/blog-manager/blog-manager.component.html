@@ -131,15 +131,6 @@
         [class.text-slate-300]="ideaFilter !== 'approved'">
         Ready to Generate
       </button>
-      <button
-        (click)="setIdeaFilter('generated')"
-        class="px-3 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap"
-        [class.bg-indigo-500]="ideaFilter === 'generated'"
-        [class.text-white]="ideaFilter === 'generated'"
-        [class.bg-slate-700]="ideaFilter !== 'generated'"
-        [class.text-slate-300]="ideaFilter !== 'generated'">
-        Generated
-      </button>
     </div>
 
     @if (isLoading) {

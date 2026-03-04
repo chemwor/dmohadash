@@ -241,7 +241,7 @@
                   </div>
                   <div class="h-1.5 bg-slate-700 rounded-full mt-1 overflow-hidden">
                     <div class="h-full bg-indigo-500 rounded-full"
-                      [style.width.%]="(page.views / (posthogData!.topPages[0]?.views || 1)) * 100">
+                      [style.width.%]="(page.views / (posthogData!.topPages[0].views || 1)) * 100">
                     </div>
                   </div>
                 </div>

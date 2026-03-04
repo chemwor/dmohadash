@@ -25,7 +25,7 @@ export class BlogManagerComponent implements OnInit, OnDestroy {
   processingMessage = '';
 
   activeView: 'ideas' | 'blogs' = 'ideas';
-  ideaFilter: 'all' | 'pending' | 'approved' | 'generated' = 'all';
+  ideaFilter: 'all' | 'pending' | 'approved' = 'all';
   blogFilter: 'all' | 'published' | 'draft' | 'archived' = 'all';
 
   selectedIdea: BlogIdea | null = null;
@@ -59,7 +59,8 @@ export class BlogManagerComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
-          this.ideas = response.ideas;
+          // Filter out generated ideas — those are now published blogs
+          this.ideas = response.ideas.filter(i => i.status !== 'generated');
           this.isLoading = false;
         },
         error: (err) => {
@@ -69,7 +70,7 @@ export class BlogManagerComponent implements OnInit, OnDestroy {
       });
   }
 
-  setIdeaFilter(filter: 'all' | 'pending' | 'approved' | 'generated'): void {
+  setIdeaFilter(filter: 'all' | 'pending' | 'approved'): void {
     this.ideaFilter = filter;
     this.loadIdeas();
   }

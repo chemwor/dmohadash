@@ -131,8 +131,9 @@ async function getArticlesForIdeas(supabase, limit = 10) {
 async function getExistingTopics(supabase) {
   const { data: blogs } = await supabase
     .from('blog_posts')
-    .select('topic_hash, image_url')
-    .not('topic_hash', 'is', null);
+    .select('title, topic_hash, image_url')
+    .order('published_at', { ascending: false })
+    .limit(50);
 
   const { data: ideas } = await supabase
     .from('blog_ideas')
@@ -142,6 +143,7 @@ async function getExistingTopics(supabase) {
   return {
     topicHashes: (blogs || []).map(b => b.topic_hash).filter(Boolean),
     usedImageUrls: (blogs || []).map(b => b.image_url).filter(Boolean),
+    blogTitles: (blogs || []).map(b => b.title),
     pendingTitles: (ideas || []).map(i => i.title.toLowerCase()),
   };
 }
@@ -153,15 +155,18 @@ async function generateIdeas(articles, existingTopics) {
     `- "${a.title}" [${a.category}]: ${a.description || 'No description'}`
   ).join('\n');
 
-  const existingTopicsList = existingTopics.pendingTitles.slice(0, 10).join(', ');
+  const allExisting = [...(existingTopics.blogTitles || []), ...existingTopics.pendingTitles];
+  const existingTopicsList = allExisting.length > 0
+    ? allExisting.map(t => `- ${t}`).join('\n')
+    : 'None yet';
 
   const prompt = `Based on these HOA news articles, generate 3-5 unique blog post ideas:
 
 ARTICLES:
 ${articleSummaries}
 
-AVOID THESE EXISTING TOPICS (don't repeat similar ideas):
-${existingTopicsList || 'None yet'}
+IMPORTANT - DO NOT repeat or closely resemble any of these existing topics. Each idea must cover a distinctly different angle:
+${existingTopicsList}
 
 For each idea, provide:
 1. A compelling title (50-70 chars)
