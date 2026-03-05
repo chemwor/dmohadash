@@ -104,4 +104,24 @@ export class SixMonthOverviewComponent implements OnInit, OnDestroy {
   formatCurrency(value: number): string {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
   }
+
+  private readonly contentTargets: Record<number, number> = {
+    1: 28, 2: 36, 3: 34, 4: 32, 5: 40, 6: 32
+  };
+
+  getContentActualTotal(month: MonthPlan): number {
+    const ca = month.content_actuals;
+    if (!ca) return 0;
+    return ca.blog + ca.video + ca.newsletter + ca.social;
+  }
+
+  getContentTargetTotal(month: number): number {
+    return this.contentTargets[month] || 0;
+  }
+
+  getContentPct(month: MonthPlan): number {
+    const target = this.getContentTargetTotal(month.month);
+    if (target <= 0) return 0;
+    return Math.min(100, Math.round((this.getContentActualTotal(month) / target) * 100));
+  }
 }

@@ -6,7 +6,7 @@ import { Subject, takeUntil } from 'rxjs';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { SixMonthService } from '../../../core/services/six-month.service';
 import { ChecklistsService } from '../../../core/services/checklists.service';
-import { SixMonthPlan, MonthPlan, ChecklistItem } from '../../../interfaces/dashboard.interfaces';
+import { SixMonthPlan, MonthPlan, ChecklistItem, ContentActuals } from '../../../interfaces/dashboard.interfaces';
 
 interface MonthTargets {
   visitors: number;
@@ -83,6 +83,7 @@ export class MonthDetailComponent implements OnInit, OnDestroy {
   checklistItems: ChecklistItem[] = [];
   loading = false;
   error = '';
+  updatingContent = '';
 
   constructor(
     private route: ActivatedRoute,
@@ -177,5 +178,64 @@ export class MonthDetailComponent implements OnInit, OnDestroy {
 
   minValue(a: number, b: number): number {
     return Math.min(a, b);
+  }
+
+  getContentActual(type: keyof ContentActuals): number {
+    return this.monthData?.content_actuals?.[type] || 0;
+  }
+
+  getContentTarget(type: string): number {
+    if (!this.monthConfig) return 0;
+    const map: Record<string, number> = {
+      blog: this.monthConfig.targets.blog_posts,
+      video: this.monthConfig.targets.videos,
+      newsletter: this.monthConfig.targets.newsletters,
+      social: this.monthConfig.targets.social_posts,
+    };
+    return map[type] || 0;
+  }
+
+  getContentPct(type: keyof ContentActuals): number {
+    const target = this.getContentTarget(type);
+    if (target <= 0) return 0;
+    return Math.min(100, Math.round((this.getContentActual(type) / target) * 100));
+  }
+
+  getTotalContentActual(): number {
+    const ca = this.monthData?.content_actuals;
+    if (!ca) return 0;
+    return ca.blog + ca.video + ca.newsletter + ca.social;
+  }
+
+  getTotalContentTarget(): number {
+    if (!this.monthConfig) return 0;
+    const t = this.monthConfig.targets;
+    return t.blog_posts + t.videos + t.newsletters + t.social_posts;
+  }
+
+  incrementContent(type: 'video' | 'newsletter' | 'social'): void {
+    if (!this.monthData?.content_actuals) return;
+    const newCount = this.monthData.content_actuals[type] + 1;
+    this.saveContentActual(type, newCount);
+  }
+
+  decrementContent(type: 'video' | 'newsletter' | 'social'): void {
+    if (!this.monthData?.content_actuals) return;
+    const newCount = Math.max(0, this.monthData.content_actuals[type] - 1);
+    this.saveContentActual(type, newCount);
+  }
+
+  private saveContentActual(type: string, count: number): void {
+    this.updatingContent = type;
+    // Optimistic update
+    if (this.monthData?.content_actuals) {
+      (this.monthData.content_actuals as any)[type] = count;
+    }
+    this.sixMonthService.updateContentActual(this.monthId, type, count)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => { this.updatingContent = ''; },
+        error: () => { this.updatingContent = ''; }
+      });
   }
 }

@@ -130,13 +130,21 @@
             </tr>
             <tr class="border-b border-slate-700/50">
               <td class="text-sm text-slate-300 px-4 py-2.5">Blog posts</td>
-              <td class="text-sm text-slate-400 text-right px-4 py-2.5">{{ monthConfig.targets.blog_posts }}</td>
-              <td class="text-right px-4 py-2.5"><span class="text-xs text-slate-500">—</span></td>
+              <td class="text-sm text-slate-400 text-right px-4 py-2.5">{{ getContentActual('blog') }} / {{ monthConfig.targets.blog_posts }}</td>
+              <td class="text-right px-4 py-2.5">
+                <span [class]="'text-xs font-bold px-2 py-0.5 rounded ' + (getContentActual('blog') >= monthConfig.targets.blog_posts ? 'text-green-400 bg-green-500/20' : getContentActual('blog') > 0 ? 'text-amber-400 bg-amber-500/20' : 'text-slate-500 bg-slate-700')">
+                  {{ getContentActual('blog') >= monthConfig.targets.blog_posts ? 'A' : getContentActual('blog') > 0 ? 'C' : 'F' }}
+                </span>
+              </td>
             </tr>
             <tr class="border-b border-slate-700/50">
               <td class="text-sm text-slate-300 px-4 py-2.5">Videos</td>
-              <td class="text-sm text-slate-400 text-right px-4 py-2.5">{{ monthConfig.targets.videos }}</td>
-              <td class="text-right px-4 py-2.5"><span class="text-xs text-slate-500">—</span></td>
+              <td class="text-sm text-slate-400 text-right px-4 py-2.5">{{ getContentActual('video') }} / {{ monthConfig.targets.videos }}</td>
+              <td class="text-right px-4 py-2.5">
+                <span [class]="'text-xs font-bold px-2 py-0.5 rounded ' + (getContentActual('video') >= monthConfig.targets.videos ? 'text-green-400 bg-green-500/20' : getContentActual('video') > 0 ? 'text-amber-400 bg-amber-500/20' : 'text-slate-500 bg-slate-700')">
+                  {{ getContentActual('video') >= monthConfig.targets.videos ? 'A' : getContentActual('video') > 0 ? 'C' : 'F' }}
+                </span>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -179,6 +187,24 @@
             <span [class]="'text-xs font-bold px-2 py-0.5 rounded ' + getGradeColor(getGradeForMetric('revenue'))">{{ getGradeForMetric('revenue') }}</span>
           </div>
         </div>
+        <div class="px-4 py-2.5 flex items-center justify-between">
+          <span class="text-sm text-slate-300">Blog posts</span>
+          <div class="flex items-center space-x-3">
+            <span class="text-xs text-slate-500">{{ getContentActual('blog') }}/{{ monthConfig.targets.blog_posts }}</span>
+            <span [class]="'text-xs font-bold px-2 py-0.5 rounded ' + (getContentActual('blog') >= monthConfig.targets.blog_posts ? 'text-green-400 bg-green-500/20' : getContentActual('blog') > 0 ? 'text-amber-400 bg-amber-500/20' : 'text-slate-500 bg-slate-700')">
+              {{ getContentActual('blog') >= monthConfig.targets.blog_posts ? 'A' : getContentActual('blog') > 0 ? 'C' : 'F' }}
+            </span>
+          </div>
+        </div>
+        <div class="px-4 py-2.5 flex items-center justify-between">
+          <span class="text-sm text-slate-300">Videos</span>
+          <div class="flex items-center space-x-3">
+            <span class="text-xs text-slate-500">{{ getContentActual('video') }}/{{ monthConfig.targets.videos }}</span>
+            <span [class]="'text-xs font-bold px-2 py-0.5 rounded ' + (getContentActual('video') >= monthConfig.targets.videos ? 'text-green-400 bg-green-500/20' : getContentActual('video') > 0 ? 'text-amber-400 bg-amber-500/20' : 'text-slate-500 bg-slate-700')">
+              {{ getContentActual('video') >= monthConfig.targets.videos ? 'A' : getContentActual('video') > 0 ? 'C' : 'F' }}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -219,20 +245,68 @@
 
     <!-- Content Tracker -->
     <div class="bg-slate-800 rounded-xl border border-slate-700 p-4">
-      <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Content Targets</h3>
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Content Progress</h3>
+        <span class="text-xs text-slate-400">{{ getTotalContentActual() }}/{{ getTotalContentTarget() }} total</span>
+      </div>
       <div class="grid grid-cols-2 gap-3">
-        @for (item of [
-          {label: 'Blog Posts', target: monthConfig.targets.blog_posts},
-          {label: 'Videos', target: monthConfig.targets.videos},
-          {label: 'Newsletters', target: monthConfig.targets.newsletters},
-          {label: 'Social Posts', target: monthConfig.targets.social_posts}
-        ]; track item.label) {
-          <div class="bg-slate-700/50 rounded-lg p-3">
-            <p class="text-xs text-slate-400 mb-1">{{ item.label }}</p>
-            <p class="text-lg font-bold text-slate-200">{{ item.target }}</p>
-            <p class="text-[10px] text-slate-500">target</p>
+        <!-- Blog Posts (auto-counted) -->
+        <div class="bg-slate-700/50 rounded-lg p-3">
+          <p class="text-xs text-slate-400 mb-1">Blog Posts</p>
+          <p class="text-lg font-bold text-slate-200">{{ getContentActual('blog') }} <span class="text-xs font-normal text-slate-500">/ {{ monthConfig.targets.blog_posts }}</span></p>
+          <div class="w-full bg-slate-600 rounded-full h-1.5 mt-1.5 mb-1">
+            <div [class]="'h-1.5 rounded-full transition-all ' + (getContentPct('blog') >= 100 ? 'bg-green-500' : 'bg-indigo-500')" [style.width.%]="getContentPct('blog')"></div>
           </div>
-        }
+          <p class="text-[10px] text-slate-500">auto-counted</p>
+        </div>
+
+        <!-- Videos -->
+        <div class="bg-slate-700/50 rounded-lg p-3">
+          <div class="flex items-center justify-between mb-1">
+            <p class="text-xs text-slate-400">Videos</p>
+            <div class="flex items-center space-x-1">
+              <button (click)="decrementContent('video')" [disabled]="updatingContent === 'video' || getContentActual('video') <= 0" class="w-5 h-5 rounded bg-slate-600 hover:bg-slate-500 disabled:opacity-30 flex items-center justify-center text-slate-300 text-xs">−</button>
+              <button (click)="incrementContent('video')" [disabled]="updatingContent === 'video'" class="w-5 h-5 rounded bg-slate-600 hover:bg-slate-500 disabled:opacity-30 flex items-center justify-center text-slate-300 text-xs">+</button>
+            </div>
+          </div>
+          <p class="text-lg font-bold text-slate-200">{{ getContentActual('video') }} <span class="text-xs font-normal text-slate-500">/ {{ monthConfig.targets.videos }}</span></p>
+          <div class="w-full bg-slate-600 rounded-full h-1.5 mt-1.5 mb-1">
+            <div [class]="'h-1.5 rounded-full transition-all ' + (getContentPct('video') >= 100 ? 'bg-green-500' : 'bg-indigo-500')" [style.width.%]="getContentPct('video')"></div>
+          </div>
+          <p class="text-[10px] text-slate-500">{{ getContentPct('video') }}%</p>
+        </div>
+
+        <!-- Newsletters -->
+        <div class="bg-slate-700/50 rounded-lg p-3">
+          <div class="flex items-center justify-between mb-1">
+            <p class="text-xs text-slate-400">Newsletters</p>
+            <div class="flex items-center space-x-1">
+              <button (click)="decrementContent('newsletter')" [disabled]="updatingContent === 'newsletter' || getContentActual('newsletter') <= 0" class="w-5 h-5 rounded bg-slate-600 hover:bg-slate-500 disabled:opacity-30 flex items-center justify-center text-slate-300 text-xs">−</button>
+              <button (click)="incrementContent('newsletter')" [disabled]="updatingContent === 'newsletter'" class="w-5 h-5 rounded bg-slate-600 hover:bg-slate-500 disabled:opacity-30 flex items-center justify-center text-slate-300 text-xs">+</button>
+            </div>
+          </div>
+          <p class="text-lg font-bold text-slate-200">{{ getContentActual('newsletter') }} <span class="text-xs font-normal text-slate-500">/ {{ monthConfig.targets.newsletters }}</span></p>
+          <div class="w-full bg-slate-600 rounded-full h-1.5 mt-1.5 mb-1">
+            <div [class]="'h-1.5 rounded-full transition-all ' + (getContentPct('newsletter') >= 100 ? 'bg-green-500' : 'bg-indigo-500')" [style.width.%]="getContentPct('newsletter')"></div>
+          </div>
+          <p class="text-[10px] text-slate-500">{{ getContentPct('newsletter') }}%</p>
+        </div>
+
+        <!-- Social Posts -->
+        <div class="bg-slate-700/50 rounded-lg p-3">
+          <div class="flex items-center justify-between mb-1">
+            <p class="text-xs text-slate-400">Social Posts</p>
+            <div class="flex items-center space-x-1">
+              <button (click)="decrementContent('social')" [disabled]="updatingContent === 'social' || getContentActual('social') <= 0" class="w-5 h-5 rounded bg-slate-600 hover:bg-slate-500 disabled:opacity-30 flex items-center justify-center text-slate-300 text-xs">−</button>
+              <button (click)="incrementContent('social')" [disabled]="updatingContent === 'social'" class="w-5 h-5 rounded bg-slate-600 hover:bg-slate-500 disabled:opacity-30 flex items-center justify-center text-slate-300 text-xs">+</button>
+            </div>
+          </div>
+          <p class="text-lg font-bold text-slate-200">{{ getContentActual('social') }} <span class="text-xs font-normal text-slate-500">/ {{ monthConfig.targets.social_posts }}</span></p>
+          <div class="w-full bg-slate-600 rounded-full h-1.5 mt-1.5 mb-1">
+            <div [class]="'h-1.5 rounded-full transition-all ' + (getContentPct('social') >= 100 ? 'bg-green-500' : 'bg-indigo-500')" [style.width.%]="getContentPct('social')"></div>
+          </div>
+          <p class="text-[10px] text-slate-500">{{ getContentPct('social') }}%</p>
+        </div>
       </div>
     </div>
   }

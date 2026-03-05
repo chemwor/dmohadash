@@ -177,6 +177,13 @@ export interface SendSummaryResponse {
 }
 
 // --- Six-Month Plan ---
+export interface ContentActuals {
+  blog: number;
+  video: number;
+  newsletter: number;
+  social: number;
+}
+
 export interface MonthPlan {
   month: number;
   name: string;
@@ -186,6 +193,7 @@ export interface MonthPlan {
   checklist_done: number;
   checklist_total: number;
   status: 'active' | 'completed' | 'upcoming';
+  content_actuals?: ContentActuals;
 }
 
 export interface GradeMetric {

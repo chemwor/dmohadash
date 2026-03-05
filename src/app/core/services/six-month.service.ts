@@ -11,6 +11,10 @@ export class SixMonthService {
 
   constructor(private http: HttpClient) {}
 
+  updateContentActual(month: number, type: string, count: number): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/content`, { month, type, count });
+  }
+
   get(): Observable<SixMonthPlan> {
     return this.http.get<SixMonthPlan>(this.apiUrl).pipe(
       catchError(error => {
