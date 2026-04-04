@@ -80,7 +80,7 @@ export interface GoogleAdsData {
   error?: string;
 }
 
-export type GoogleAdsPeriod = 'today' | 'week' | 'month' | 'all';
+export type GoogleAdsPeriod = 'today' | 'yesterday' | 'week' | 'month' | 'all';
 
 @Injectable({
   providedIn: 'root'

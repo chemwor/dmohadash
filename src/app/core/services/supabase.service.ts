@@ -62,7 +62,7 @@ export interface SupabaseData {
   error?: string;
 }
 
-export type SupabasePeriod = 'today' | 'week' | 'month' | 'all';
+export type SupabasePeriod = 'today' | 'yesterday' | 'week' | 'month' | 'all';
 
 @Injectable({
   providedIn: 'root'

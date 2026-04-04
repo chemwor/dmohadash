@@ -19,10 +19,11 @@ export class CostTrackerComponent implements OnInit, OnDestroy {
   data: CostsData | null = null;
   loading = false;
   error = '';
-  selectedPeriod: 'today' | 'week' | 'month' = 'today';
+  selectedPeriod: 'today' | 'yesterday' | 'week' | 'month' = 'today';
 
   periods = [
     { value: 'today' as const, label: 'Today' },
+    { value: 'yesterday' as const, label: 'Yesterday' },
     { value: 'week' as const, label: 'Week' },
     { value: 'month' as const, label: 'Month' }
   ];
@@ -38,7 +39,7 @@ export class CostTrackerComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  setPeriod(period: 'today' | 'week' | 'month'): void {
+  setPeriod(period: 'today' | 'yesterday' | 'week' | 'month'): void {
     this.selectedPeriod = period;
     this.loadData();
   }

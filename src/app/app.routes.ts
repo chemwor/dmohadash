@@ -89,6 +89,10 @@ export const routes: Routes = [
       {
         path: 'statutes',
         loadComponent: () => import('./pages/dashboard/statutes/statutes.component').then(m => m.StatutesComponent)
+      },
+      {
+        path: 'content',
+        loadChildren: () => import('./features/content/content.routes').then(m => m.contentRoutes)
       }
     ]
   },

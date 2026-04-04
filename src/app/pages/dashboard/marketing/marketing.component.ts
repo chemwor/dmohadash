@@ -25,6 +25,7 @@ export class MarketingComponent implements OnInit, OnDestroy {
   selectedPeriod: GoogleAdsPeriod = 'today';
   periods = [
     { value: 'today' as GoogleAdsPeriod, label: 'Today' },
+    { value: 'yesterday' as GoogleAdsPeriod, label: 'Yesterday' },
     { value: 'week' as GoogleAdsPeriod, label: 'This Week' },
     { value: 'month' as GoogleAdsPeriod, label: 'This Month' }
   ];

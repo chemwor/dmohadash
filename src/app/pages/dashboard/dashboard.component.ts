@@ -36,6 +36,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   selectedPeriod: StripePeriod = 'today';
   periods = [
     { value: 'today' as StripePeriod, label: 'Today' },
+    { value: 'yesterday' as StripePeriod, label: 'Yesterday' },
     { value: 'week' as StripePeriod, label: 'This Week' },
     { value: 'month' as StripePeriod, label: 'This Month' }
   ];

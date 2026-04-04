@@ -11,7 +11,7 @@ export class CostsService {
 
   constructor(private http: HttpClient) {}
 
-  get(period: 'today' | 'week' | 'month' = 'month'): Observable<CostsData> {
+  get(period: 'today' | 'yesterday' | 'week' | 'month' = 'month'): Observable<CostsData> {
     return this.http.get<CostsData>(`${this.apiUrl}?period=${period}`).pipe(
       catchError(error => {
         console.error('Costs service error:', error);

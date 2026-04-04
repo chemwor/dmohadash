@@ -24,7 +24,7 @@ export class HoaIntelComponent implements OnInit, OnDestroy {
   scanning = false;
 
   // Filters
-  activeStatus: string = '';
+  activeStatus: string = 'new';
   activeCategory: string = '';
   sortBy: SortOption = 'newest';
 

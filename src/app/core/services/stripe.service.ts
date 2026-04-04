@@ -28,7 +28,7 @@ export interface StripeData {
   error?: string;
 }
 
-export type StripePeriod = 'today' | 'week' | 'month';
+export type StripePeriod = 'today' | 'yesterday' | 'week' | 'month';
 
 @Injectable({
   providedIn: 'root'

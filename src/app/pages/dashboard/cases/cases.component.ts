@@ -22,6 +22,7 @@ export class CasesComponent implements OnInit, OnDestroy {
   selectedPeriod: SupabasePeriod = 'today';
   periods = [
     { value: 'today' as SupabasePeriod, label: 'Today' },
+    { value: 'yesterday' as SupabasePeriod, label: 'Yesterday' },
     { value: 'week' as SupabasePeriod, label: 'This Week' },
     { value: 'month' as SupabasePeriod, label: 'This Month' },
     { value: 'all' as SupabasePeriod, label: 'All Time' }
