@@ -133,7 +133,7 @@ export const handler: Handler = async (event) => {
             duration: String(Math.min(Math.max(shot.duration, 5), 10)),
             aspect_ratio: '9:16',
             model_name: 'kling-v1-6',
-            mode: 'pro',
+            mode: 'std',
           }),
         });
 
@@ -317,7 +317,7 @@ export const handler: Handler = async (event) => {
           duration: String(Math.min(Math.max(shot.duration, 5), 10)),
           aspect_ratio: '9:16',
           model_name: 'kling-v1-6',
-          mode: 'pro',
+          mode: 'std',
         }),
       });
 
