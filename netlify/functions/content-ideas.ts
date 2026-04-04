@@ -54,12 +54,23 @@ export const handler: Handler = async (event) => {
     const typeDesc = typeDescriptions[type] || type;
     const seedText = seed ? `\n\nUse this as inspiration: "${seed}"` : '';
 
-    const systemPrompt = `You are a viral social media content strategist for DisputeMyHOA, a service that helps homeowners fight unfair HOA fines. Generate creative, entertaining, and relatable video scenario ideas that would go viral on TikTok/Instagram Reels. Each scenario should feel authentic and tap into the frustration homeowners feel with overreaching HOAs. Return JSON only, no markdown, no code fences.`;
+    const systemPrompt = `You are a viral social media content strategist for DisputeMyHOA, a service that helps homeowners fight unfair HOA fines. Generate creative, entertaining, and relatable video scenario ideas that would go viral on TikTok/Instagram Reels. Each scenario should feel authentic and tap into the frustration homeowners feel with overreaching HOAs.
+
+Fine amounts must be between $8,000 and $25,000. The absurdly high fine relative to the trivial violation is the core of the humor. Never generate a fine under $5,000.
+
+Keep scenario to one sentence maximum. Do not describe character reactions or board behavior in the idea — that gets written at the script stage. Just describe the violation and the absurd enforcement action.
+
+Return JSON only, no markdown, no code fences.`;
 
     const userPrompt = `Generate exactly 3 different video idea variants for this type: ${typeDesc}.${seedText}
 
+Examples of good ideas:
+- Scenario: "HOA fines homeowner for trash can visible 4 minutes past pickup" / Violation: "Trash can visible from street" / Fine: $12,000
+- Scenario: "Board measures doormat and finds it 2 inches too wide" / Violation: "Oversized doormat" / Fine: $9,500
+- Scenario: "HOA bans petunias after color swatch test determines they are vibrant pink" / Violation: "Unapproved flower color" / Fine: $15,000
+
 Return this exact JSON structure:
-{"ideas":[{"scenario":"<2-3 sentence description of what happens in the video>","violation_type":"<the specific HOA violation, e.g. 'Trash can visible from street', 'Wrong shade of beige paint'>","fine_amount":<realistic fine amount as integer, between 25 and 5000>}]}`;
+{"ideas":[{"scenario":"<one punchy sentence>","violation_type":"<the specific HOA violation>","fine_amount":<integer between 8000 and 25000>}]}`;
 
     const response = await fetch(ANTHROPIC_API_URL, {
       method: 'POST',
