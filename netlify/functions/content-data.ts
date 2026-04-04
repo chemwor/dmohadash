@@ -155,10 +155,26 @@ export const handler: Handler = async (event) => {
 
         case 'approve_prompts': {
           // Mark prompt as approved
-          await supabase
+          const { data: approvedPrompt } = await supabase
             .from('video_prompts')
             .update({ status: 'approved' })
-            .eq('video_idea_id', body.video_idea_id);
+            .eq('video_idea_id', body.video_idea_id)
+            .select()
+            .single();
+
+          // Auto-create asset slots from the prompt shots
+          if (approvedPrompt?.shots && Array.isArray(approvedPrompt.shots)) {
+            const assets = approvedPrompt.shots.map((shot: { shot_number: number; duration: number }) => ({
+              video_idea_id: body.video_idea_id,
+              shot_number: shot.shot_number,
+              duration: shot.duration,
+              status: 'generating',
+            }));
+
+            await supabase
+              .from('video_assets')
+              .insert(assets);
+          }
 
           // Update idea status to generating
           await supabase
@@ -166,7 +182,29 @@ export const handler: Handler = async (event) => {
             .update({ status: 'generating' })
             .eq('id', body.video_idea_id);
 
-          return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
+          // Return the full idea with relations so the UI updates in one call
+          const { data: fullIdea } = await supabase
+            .from('video_ideas')
+            .select('*')
+            .eq('id', body.video_idea_id)
+            .single();
+
+          const { data: newAssets } = await supabase
+            .from('video_assets')
+            .select('*')
+            .eq('video_idea_id', body.video_idea_id)
+            .order('shot_number', { ascending: true });
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              ok: true,
+              idea: fullIdea,
+              assets: newAssets || [],
+              prompt: approvedPrompt,
+            }),
+          };
         }
 
         case 'create_assets': {

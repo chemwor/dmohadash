@@ -463,10 +463,13 @@ export class VideoDetailComponent implements OnInit, OnDestroy {
           this.contentService.approvePrompts(this.idea!.id)
             .pipe(takeUntil(this.destroy$))
             .subscribe({
-              next: () => {
+              next: (result: any) => {
                 if (this.idea) {
                   this.idea.status = 'generating';
                   if (this.idea.prompt) this.idea.prompt.status = 'approved';
+                  if (result?.assets) {
+                    this.idea.assets = result.assets;
+                  }
                 }
                 this.actionLoading = false;
               },
