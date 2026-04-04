@@ -5,7 +5,7 @@ import * as crypto from 'crypto';
 const KLING_ACCESS_KEY = process.env.KLING_ACCESS_KEY;
 const KLING_SECRET_KEY = process.env.KLING_SECRET_KEY;
 const KLING_API_URL = 'https://api.klingai.com/v1/videos/text2video';
-const KLING_STATUS_URL = 'https://api.klingai.com/v1/videos';
+const KLING_STATUS_URL = 'https://api.klingai.com/v1/videos/text2video';
 
 const headers = {
   'Access-Control-Allow-Origin': '*',
