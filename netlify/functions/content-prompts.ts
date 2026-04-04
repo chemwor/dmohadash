@@ -90,13 +90,13 @@ Return this exact JSON structure:
       "shot_number": 1,
       "character": "<character name/role, e.g. 'HOA Board President Linda'>",
       "line": "<the dialogue this character says in this shot>",
-      "duration": <duration in seconds, between 3 and 8>,
+      "duration": 5,
       "kling_prompt": "VERTICAL 9:16, 1080p, raw documentary footage, handheld camera, cinema verite style, single static <duration> second take, small HOA meeting room, drop ceiling fluorescent lights, beige cinder block walls, folding table wrinkled plastic tablecloth styrofoam cups hand-written nameplates reading BOARD OF DIRECTORS, American flag back right corner, analog wall clock showing 7pm, audience POV low angle, back of head of resident out of focus in bottom left foreground, <detailed character description including age, appearance, clothing, expression, body language>, only character visible in frame, mouth moving in sync with speech, subtle handheld camera shake, grainy texture, harsh fluorescent lighting, no color grading, no watermarks, no text overlays, authentic candid feel. Character says: <dialogue>"
     }
   ]
 }
 
-Create 4-6 shots that tell the story. Each shot should be a single take of one character speaking. Total duration should be 20-40 seconds.`;
+Create exactly 3 shots that tell the story. Each shot must be exactly 5 seconds. Total video duration must be exactly 15 seconds. Keep dialogue short and punchy — one line per shot.`;
 
     const response = await fetch(ANTHROPIC_API_URL, {
       method: 'POST',
