@@ -119,7 +119,8 @@ Create 4-6 shots that tell the story. Each shot should be a single take of one c
     }
 
     const data = await response.json();
-    const text = data.content[0].text;
+    const raw = data.content[0].text;
+    const text = raw.replace(/```(?:json)?\s*/g, '').replace(/```\s*/g, '').trim();
     const parsed = JSON.parse(text);
 
     const totalDuration = parsed.shots.reduce((sum: number, s: { duration: number }) => sum + s.duration, 0);

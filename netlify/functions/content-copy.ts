@@ -136,7 +136,8 @@ Return as JSON with platform names as keys:
     }
 
     const data = await response.json();
-    const text = data.content[0].text;
+    const raw = data.content[0].text;
+    const text = raw.replace(/```(?:json)?\s*/g, '').replace(/```\s*/g, '').trim();
     const parsed = JSON.parse(text);
 
     return {
