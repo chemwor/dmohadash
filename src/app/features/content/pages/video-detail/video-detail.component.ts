@@ -589,11 +589,15 @@ export class VideoDetailComponent implements OnInit, OnDestroy {
     this.contentService.generateVideos(this.idea.id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (result) => {
+        next: (result: any) => {
+          this.actionLoading = false;
+          if (result.error) {
+            this.error = result.error;
+            return;
+          }
           if (this.idea && result.assets) {
             this.idea.assets = result.assets;
           }
-          this.actionLoading = false;
           this.startPolling();
         },
         error: (err) => {

@@ -132,19 +132,26 @@ export const handler: Handler = async (event) => {
             prompt: shot.kling_prompt,
             duration: String(Math.min(Math.max(shot.duration, 5), 10)),
             aspect_ratio: '9:16',
-            model_name: 'kling-v2.0',
+            model_name: 'kling-v1-6',
             mode: 'pro',
           }),
         });
 
-        if (!klingResponse.ok) {
-          const errText = await klingResponse.text();
-          console.error(`Kling API error for shot ${asset.shot_number}:`, errText);
-          results.push({ ...asset, error: `Kling API error: ${klingResponse.status}` });
-          continue;
-        }
-
         const klingData = await klingResponse.json();
+
+        if (!klingResponse.ok || klingData.code) {
+          const errMsg = klingData.message || `HTTP ${klingResponse.status}`;
+          console.error(`Kling API error for shot ${asset.shot_number}:`, errMsg);
+          // Return the error on first shot failure so user sees the real message
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              assets: [],
+              error: `Kling API: ${errMsg}`,
+            }),
+          };
+        }
         const taskId = klingData.data?.task_id || klingData.data?.id || klingData.task_id || klingData.id;
 
         if (taskId) {
@@ -309,7 +316,7 @@ export const handler: Handler = async (event) => {
           prompt: shot.kling_prompt,
           duration: String(Math.min(Math.max(shot.duration, 5), 10)),
           aspect_ratio: '9:16',
-          model_name: 'kling-v2.0',
+          model_name: 'kling-v1-6',
           mode: 'pro',
         }),
       });
