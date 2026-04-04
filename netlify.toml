@@ -28,6 +28,18 @@
 [functions."ad-suggestions"]
   timeout = 120
 
+[functions."content-ideas"]
+  timeout = 30
+
+[functions."content-prompts"]
+  timeout = 60
+
+[functions."content-copy"]
+  timeout = 30
+
+[functions."content-data"]
+  timeout = 15
+
 # Redirect dashboard API calls to Flask backend
 [[redirects]]
   from = "/api/dashboard/*"

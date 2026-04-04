@@ -77,7 +77,7 @@ export interface GeneratedIdea {
   providedIn: 'root'
 })
 export class ContentService {
-  private readonly functionsUrl = '/.netlify/functions';
+  private readonly functionsUrl = '/api';
 
   constructor(private http: HttpClient) {}
 
