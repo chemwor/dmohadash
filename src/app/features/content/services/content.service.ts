@@ -226,4 +226,42 @@ export class ContentService {
       shots
     });
   }
+
+  // --- Kling video generation ---
+
+  generateVideos(videoIdeaId: string): Observable<{ assets: VideoAsset[] }> {
+    return this.http.post<{ assets: VideoAsset[] }>(`${this.functionsUrl}/content-kling`, {
+      action: 'generate',
+      video_idea_id: videoIdeaId
+    }).pipe(
+      catchError(error => {
+        console.error('ContentService generateVideos error:', error);
+        throw error;
+      })
+    );
+  }
+
+  checkVideoStatus(videoIdeaId: string): Observable<{ assets: VideoAsset[]; all_complete: boolean }> {
+    return this.http.post<{ assets: VideoAsset[]; all_complete: boolean }>(`${this.functionsUrl}/content-kling`, {
+      action: 'check_status',
+      video_idea_id: videoIdeaId
+    }).pipe(
+      catchError(error => {
+        console.error('ContentService checkVideoStatus error:', error);
+        return of({ assets: [], all_complete: false });
+      })
+    );
+  }
+
+  regenerateShot(assetId: string): Observable<VideoAsset> {
+    return this.http.post<VideoAsset>(`${this.functionsUrl}/content-kling`, {
+      action: 'regenerate_shot',
+      asset_id: assetId
+    }).pipe(
+      catchError(error => {
+        console.error('ContentService regenerateShot error:', error);
+        throw error;
+      })
+    );
+  }
 }

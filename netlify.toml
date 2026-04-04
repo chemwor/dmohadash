@@ -40,6 +40,9 @@
 [functions."content-data"]
   timeout = 15
 
+[functions."content-kling"]
+  timeout = 120
+
 # Redirect dashboard API calls to Flask backend
 [[redirects]]
   from = "/api/dashboard/*"
