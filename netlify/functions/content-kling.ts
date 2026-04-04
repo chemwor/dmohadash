@@ -134,6 +134,7 @@ export const handler: Handler = async (event) => {
             aspect_ratio: '9:16',
             model_name: 'kling-v1-6',
             mode: 'std',
+            enable_audio: true,
           }),
         });
 
