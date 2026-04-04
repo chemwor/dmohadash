@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Subject, takeUntil, interval } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 import {
   ContentService,
   IdeaWithRelations,
@@ -122,79 +122,54 @@ import { CopyEditorComponent } from '../../components/copy-editor/copy-editor.co
             }
           </div>
 
-          <!-- STEP 3: VIDEO ASSETS -->
-          <div [class]="'card ' + (isUnlocked('generating') ? '' : 'opacity-50 pointer-events-none')">
+          <!-- STEP 3: UPLOAD VIDEO -->
+          <div [class]="'card ' + (isUnlocked('prompt_ready') ? '' : 'opacity-50 pointer-events-none')">
             <h2 class="section-header flex items-center gap-2">
-              <span [class]="'w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ' + (isUnlocked('generating') ? 'bg-green-500/20 text-green-400' : 'bg-slate-700 text-slate-500')">3</span>
-              Video Assets
+              <span [class]="'w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ' + (isUnlocked('prompt_ready') ? 'bg-green-500/20 text-green-400' : 'bg-slate-700 text-slate-500')">3</span>
+              Upload Video
             </h2>
 
-            @if (idea.assets && idea.assets.length > 0) {
-              <!-- Generate Videos button if no shots have been submitted to Kling yet -->
-              @if (hasUnsubmittedAssets) {
-                <div class="mb-4 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg flex items-center justify-between">
-                  <p class="text-sm text-slate-300">Ready to generate {{ unsubmittedCount }} video shots via Kling AI</p>
-                  <button (click)="onGenerateVideos()" [disabled]="actionLoading" class="btn-primary text-xs">
-                    {{ actionLoading ? 'Submitting...' : 'Generate Videos' }}
+            @if (isUnlocked('prompt_ready')) {
+              <div class="mb-4 p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-lg">
+                <p class="text-sm text-slate-300 mb-1">Use the prompts above to generate your video on
+                  <a href="https://klingai.com" target="_blank" rel="noopener" class="text-indigo-400 hover:text-indigo-300 underline">klingai.com</a>,
+                  then paste the final video URL below.
+                </p>
+                <p class="text-xs text-slate-500">Tip: Copy each shot prompt, generate on Kling's website, then combine/edit the clips.</p>
+              </div>
+
+              @if (idea.post?.final_video_url) {
+                <video [src]="idea.post!.final_video_url!" controls class="w-full rounded-lg mb-4 max-h-96 bg-black"></video>
+                <div class="flex gap-2">
+                  <button (click)="removeVideo()" class="btn-secondary text-xs">Replace Video</button>
+                </div>
+              } @else {
+                <div class="space-y-3">
+                  <input
+                    type="text"
+                    [(ngModel)]="videoUrl"
+                    class="input-field"
+                    placeholder="Paste your final video URL here..."
+                  />
+                  <button
+                    (click)="onUploadVideo()"
+                    [disabled]="!videoUrl || actionLoading"
+                    class="btn-primary w-full"
+                  >
+                    {{ actionLoading ? 'Saving...' : 'Save Video' }}
                   </button>
                 </div>
               }
 
-              <!-- Polling status bar -->
-              @if (isPolling) {
-                <div class="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-center gap-3">
-                  <svg class="w-4 h-4 animate-spin text-yellow-400" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <p class="text-sm text-yellow-300">Generating videos... checking status every 30s</p>
-                </div>
-              }
-
-              <div class="space-y-3">
-                @for (asset of idea.assets; track asset.id) {
-                  <div class="bg-slate-700/30 rounded-lg p-4 border border-slate-700">
-                    <div class="flex items-center justify-between mb-2">
-                      <span class="text-sm font-medium text-slate-100">Shot {{ asset.shot_number }}</span>
-                      <span [class]="'px-2 py-0.5 rounded-full text-xs font-medium ' + assetStatusClass(asset.status)">
-                        {{ asset.status }}
-                      </span>
-                    </div>
-
-                    @if (asset.status === 'ready' && asset.file_url) {
-                      <video [src]="asset.file_url" controls class="w-full rounded-lg mb-2 max-h-64 bg-black"></video>
-                      <div class="flex gap-2">
-                        <button (click)="approveAsset(asset)" class="btn-primary text-xs flex-1">Approve</button>
-                        <button (click)="rejectAsset(asset)" class="btn-secondary text-xs flex-1">Reject</button>
-                      </div>
-                    } @else if (asset.status === 'rejected') {
-                      <button (click)="onRegenerateShot(asset)" [disabled]="actionLoading" class="btn-primary text-xs w-full">
-                        {{ actionLoading ? 'Regenerating...' : 'Regenerate Shot' }}
-                      </button>
-                    } @else if (asset.kling_job_id) {
-                      <div class="flex items-center gap-2 text-xs text-slate-400">
-                        <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Generating with Kling AI...
-                      </div>
-                    } @else {
-                      <p class="text-xs text-slate-500">Waiting to submit to Kling AI</p>
-                    }
-                  </div>
-                }
-              </div>
-
-              @if (allAssetsApproved && (idea.status === 'generating' || idea.status === 'review')) {
+              @if (!idea.post?.final_video_url && (idea.status === 'prompt_ready' || idea.status === 'generating')) {
+                <!-- Skip to approved if they want to generate copy first -->
+              } @else if (idea.post?.final_video_url && idea.status !== 'approved' && idea.status !== 'copy_approved' && idea.status !== 'published') {
                 <button (click)="markReviewed()" [disabled]="actionLoading" class="btn-primary text-sm mt-4">
-                  {{ actionLoading ? 'Saving...' : 'Mark as Reviewed' }}
+                  {{ actionLoading ? 'Saving...' : 'Approve Video' }}
                 </button>
               }
-            } @else if (isUnlocked('generating')) {
-              <p class="text-sm text-slate-500">Asset slots will be created when prompts are approved.</p>
             } @else {
-              <p class="text-sm text-slate-500">Assets will appear after prompts are approved.</p>
+              <p class="text-sm text-slate-500">Upload unlocks after prompts are generated.</p>
             }
           </div>
 
@@ -329,12 +304,8 @@ export class VideoDetailComponent implements OnInit, OnDestroy {
   editViolation = '';
   editFine = 0;
 
-  // Asset URLs for manual entry
-  assetUrls: Record<string, string> = {};
-
-  // Kling polling
-  isPolling = false;
-  private pollingSubscription: any = null;
+  // Video upload
+  videoUrl = '';
 
   // Copy generation
   allPlatforms = ['tiktok', 'instagram', 'youtube', 'facebook'];
@@ -381,7 +352,6 @@ export class VideoDetailComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.stopPolling();
     this.destroy$.next();
     this.destroy$.complete();
   }
@@ -402,21 +372,6 @@ export class VideoDetailComponent implements OnInit, OnDestroy {
     return this.idea.assets.every(a => a.status === 'ready');
   }
 
-  get hasUnsubmittedAssets(): boolean {
-    if (!this.idea?.assets) return false;
-    return this.idea.assets.some(a => !a.kling_job_id && a.status === 'generating');
-  }
-
-  get unsubmittedCount(): number {
-    if (!this.idea?.assets) return 0;
-    return this.idea.assets.filter(a => !a.kling_job_id && a.status === 'generating').length;
-  }
-
-  get hasGeneratingAssets(): boolean {
-    if (!this.idea?.assets) return false;
-    return this.idea.assets.some(a => a.kling_job_id && a.status === 'generating');
-  }
-
   loadIdea(id: string): void {
     this.loading = true;
     this.contentService.getIdea(id)
@@ -429,10 +384,6 @@ export class VideoDetailComponent implements OnInit, OnDestroy {
             this.generatedCopy = idea.post.copy;
             this.hasCopyGenerated = Object.keys(this.generatedCopy).length > 0;
             this.selectedPlatforms = idea.post.platforms || this.selectedPlatforms;
-          }
-          // Auto-start polling if there are assets being generated
-          if (this.hasGeneratingAssets) {
-            this.startPolling();
           }
         },
         error: () => {
@@ -544,124 +495,61 @@ export class VideoDetailComponent implements OnInit, OnDestroy {
     }
   }
 
-  uploadAssetUrl(asset: VideoAsset): void {
-    const url = this.assetUrls[asset.id];
-    if (!url) return;
-
-    this.contentService.updateAsset(asset.id, { file_url: url, status: 'ready' } as Partial<VideoAsset>)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (updated) => {
-          if (this.idea?.assets) {
-            const idx = this.idea.assets.findIndex(a => a.id === asset.id);
-            if (idx >= 0) this.idea.assets[idx] = updated;
-          }
-        },
-        error: (err) => {
-          this.error = err.message || 'Failed to update asset';
-        }
-      });
-  }
-
-  approveAsset(asset: VideoAsset): void {
-    // Asset is already 'ready' status — no further action needed for approval in current flow.
-    // The "Mark as Reviewed" button handles the overall status transition.
-  }
-
-  rejectAsset(asset: VideoAsset): void {
-    this.contentService.updateAsset(asset.id, { status: 'rejected' } as Partial<VideoAsset>)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (updated) => {
-          if (this.idea?.assets) {
-            const idx = this.idea.assets.findIndex(a => a.id === asset.id);
-            if (idx >= 0) this.idea.assets[idx] = updated;
-          }
-        }
-      });
-  }
-
-  onGenerateVideos(): void {
-    if (!this.idea) return;
+  onUploadVideo(): void {
+    if (!this.idea || !this.videoUrl) return;
     this.actionLoading = true;
     this.error = '';
 
-    this.contentService.generateVideos(this.idea.id)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (result: any) => {
-          this.actionLoading = false;
-          if (result.error) {
-            this.error = result.error;
-            return;
-          }
-          if (this.idea && result.assets) {
-            this.idea.assets = result.assets;
-          }
-          this.startPolling();
-        },
-        error: (err) => {
-          this.actionLoading = false;
-          this.error = err.message || 'Failed to submit to Kling';
-        }
-      });
-  }
-
-  onRegenerateShot(asset: VideoAsset): void {
-    this.actionLoading = true;
-    this.error = '';
-
-    this.contentService.regenerateShot(asset.id)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (updated) => {
-          if (this.idea?.assets) {
-            const idx = this.idea.assets.findIndex(a => a.id === asset.id);
-            if (idx >= 0) this.idea.assets[idx] = updated;
-          }
-          this.actionLoading = false;
-          this.startPolling();
-        },
-        error: (err) => {
-          this.actionLoading = false;
-          this.error = err.message || 'Failed to regenerate shot';
-        }
-      });
-  }
-
-  startPolling(): void {
-    if (this.isPolling || !this.idea) return;
-    this.isPolling = true;
-
-    this.pollingSubscription = interval(30000)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(() => {
-        if (!this.idea || !this.hasGeneratingAssets) {
-          this.stopPolling();
-          return;
-        }
-
-        this.contentService.checkVideoStatus(this.idea.id)
-          .pipe(takeUntil(this.destroy$))
-          .subscribe({
-            next: (result) => {
-              if (this.idea) {
-                this.idea.assets = result.assets;
-                if (result.all_complete) {
-                  this.idea.status = 'review';
-                  this.stopPolling();
-                }
-              }
+    // Save video URL to video_posts record
+    if (this.idea.post) {
+      this.contentService.updateVideoUrl(this.idea.post.id, this.videoUrl)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (post) => {
+            if (this.idea) {
+              this.idea.post = post;
             }
-          });
-      });
+            this.actionLoading = false;
+          },
+          error: (err) => {
+            this.actionLoading = false;
+            this.error = err.message || 'Failed to save video';
+          }
+        });
+    } else {
+      // Create a new post with the video URL
+      this.contentService.savePost({
+        video_idea_id: this.idea.id,
+        platforms: this.selectedPlatforms,
+        copy: {},
+        final_video_url: this.videoUrl
+      })
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (post) => {
+            if (this.idea) {
+              this.idea.post = post;
+            }
+            this.actionLoading = false;
+          },
+          error: (err) => {
+            this.actionLoading = false;
+            this.error = err.message || 'Failed to save video';
+          }
+        });
+    }
   }
 
-  stopPolling(): void {
-    this.isPolling = false;
-    if (this.pollingSubscription) {
-      this.pollingSubscription.unsubscribe();
-      this.pollingSubscription = null;
+  removeVideo(): void {
+    this.videoUrl = '';
+    if (this.idea?.post) {
+      this.contentService.updateVideoUrl(this.idea.post.id, '')
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (post) => {
+            if (this.idea) this.idea.post = post;
+          }
+        });
     }
   }
 

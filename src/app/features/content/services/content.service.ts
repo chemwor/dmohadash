@@ -188,10 +188,18 @@ export class ContentService {
     });
   }
 
-  savePost(post: { video_idea_id: string; platforms: string[]; copy: Record<string, PlatformCopy> }): Observable<VideoPost> {
+  savePost(post: { video_idea_id: string; platforms: string[]; copy: Record<string, PlatformCopy>; final_video_url?: string }): Observable<VideoPost> {
     return this.http.post<VideoPost>(`${this.functionsUrl}/content-data`, {
       action: 'save_post',
       ...post
+    });
+  }
+
+  updateVideoUrl(postId: string, finalVideoUrl: string): Observable<VideoPost> {
+    return this.http.post<VideoPost>(`${this.functionsUrl}/content-data`, {
+      action: 'update_video_url',
+      id: postId,
+      final_video_url: finalVideoUrl
     });
   }
 

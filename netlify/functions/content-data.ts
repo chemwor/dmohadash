@@ -242,14 +242,31 @@ export const handler: Handler = async (event) => {
         }
 
         case 'save_post': {
+          const insertData: Record<string, unknown> = {
+            video_idea_id: body.video_idea_id,
+            platforms: body.platforms || [],
+            copy: body.copy || {},
+            status: 'draft',
+          };
+          if (body.final_video_url) {
+            insertData.final_video_url = body.final_video_url;
+          }
+
           const { data, error } = await supabase
             .from('video_posts')
-            .insert({
-              video_idea_id: body.video_idea_id,
-              platforms: body.platforms,
-              copy: body.copy,
-              status: 'draft',
-            })
+            .insert(insertData)
+            .select()
+            .single();
+
+          if (error) throw new Error(error.message);
+          return { statusCode: 200, headers, body: JSON.stringify(data) };
+        }
+
+        case 'update_video_url': {
+          const { data, error } = await supabase
+            .from('video_posts')
+            .update({ final_video_url: body.final_video_url || null })
+            .eq('id', body.id)
             .select()
             .single();
 
