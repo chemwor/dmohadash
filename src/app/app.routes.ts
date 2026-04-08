@@ -93,6 +93,10 @@ export const routes: Routes = [
       {
         path: 'content',
         loadChildren: () => import('./features/content/content.routes').then(m => m.contentRoutes)
+      },
+      {
+        path: 'reddit-leads',
+        loadComponent: () => import('./pages/dashboard/reddit-leads/reddit-leads.component').then(m => m.RedditLeadsComponent)
       }
     ]
   },

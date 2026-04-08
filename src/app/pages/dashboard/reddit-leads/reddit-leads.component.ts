@@ -1,0 +1,286 @@
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Subject, takeUntil } from 'rxjs';
+import { LeadsService, Lead } from '../../../core/services/leads.service';
+
+@Component({
+  selector: 'app-reddit-leads',
+  standalone: true,
+  imports: [CommonModule],
+  template: `
+    <div class="p-4 md:p-6 lg:p-8">
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+          <h1 class="text-xl md:text-2xl font-bold text-slate-100">Reddit Leads</h1>
+          @if (newCount > 0) {
+            <span class="px-2.5 py-0.5 bg-indigo-500/20 text-indigo-400 rounded-full text-xs font-semibold">
+              {{ newCount }} new
+            </span>
+          }
+        </div>
+        <button
+          (click)="runScraper()"
+          [disabled]="scraperRunning"
+          class="btn-primary text-sm flex items-center gap-2"
+        >
+          @if (scraperRunning) {
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Scanning...
+          } @else {
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            Run Scraper
+          }
+        </button>
+      </div>
+
+      <!-- Scraper feedback -->
+      @if (scraperMessage) {
+        <div [class]="'mb-4 p-3 rounded-lg text-sm ' + (scraperOk ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400')">
+          {{ scraperMessage }}
+          <button (click)="scraperMessage = ''" class="ml-2 text-xs opacity-60 hover:opacity-100">dismiss</button>
+        </div>
+      }
+
+      <!-- Filter Tabs -->
+      <div class="flex gap-1 mb-6 bg-slate-800 rounded-lg p-1">
+        @for (tab of tabs; track tab.key) {
+          <button
+            (click)="activeTab = tab.key; loadLeads()"
+            [class]="activeTab === tab.key
+              ? 'flex-1 px-3 py-2 text-xs md:text-sm font-medium rounded-md bg-indigo-500 text-white transition-colors'
+              : 'flex-1 px-3 py-2 text-xs md:text-sm font-medium rounded-md text-slate-400 hover:text-slate-200 transition-colors'"
+          >
+            {{ tab.label }}
+          </button>
+        }
+      </div>
+
+      <!-- Loading -->
+      @if (loading) {
+        <div class="space-y-3">
+          @for (i of [1,2,3,4]; track i) {
+            <div class="card">
+              <div class="skeleton h-4 w-16 mb-2 rounded"></div>
+              <div class="skeleton h-5 w-full mb-2 rounded"></div>
+              <div class="skeleton h-4 w-24 rounded"></div>
+            </div>
+          }
+        </div>
+      } @else if (leads.length === 0) {
+        <div class="card text-center py-12">
+          <svg class="w-12 h-12 text-slate-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+          <p class="text-slate-400 text-sm">No {{ activeTab === 'all' ? '' : activeTab }} leads found</p>
+          @if (activeTab === 'new') {
+            <button (click)="runScraper()" [disabled]="scraperRunning" class="btn-primary text-sm mt-4">
+              Run Scraper to Find Leads
+            </button>
+          }
+        </div>
+      } @else {
+        <!-- Lead Cards -->
+        <div class="space-y-3">
+          @for (lead of leads; track lead.id) {
+            <div class="card hover:border-slate-600 transition-colors">
+              <div class="flex items-start justify-between gap-4">
+                <div class="flex-1 min-w-0">
+                  <!-- Subreddit + Score -->
+                  <div class="flex items-center gap-2 mb-1.5">
+                    <span class="px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded text-[11px] font-medium">
+                      r/{{ lead.subreddit }}
+                    </span>
+                    <span [class]="'px-2 py-0.5 rounded text-[11px] font-bold ' + scoreBadgeClass(lead.score)">
+                      {{ lead.score }}
+                    </span>
+                    @if (lead.status !== 'new') {
+                      <span [class]="'px-2 py-0.5 rounded text-[11px] font-medium ' + statusBadgeClass(lead.status)">
+                        {{ lead.status }}
+                      </span>
+                    }
+                  </div>
+
+                  <!-- Title -->
+                  <p class="text-sm text-slate-100 font-medium line-clamp-2 mb-1.5">{{ lead.title }}</p>
+
+                  <!-- Timestamp -->
+                  <p class="text-xs text-slate-500">{{ timeAgo(lead.created_utc) }}</p>
+                </div>
+
+                <!-- Actions -->
+                <div class="flex flex-col gap-1.5 flex-shrink-0">
+                  <a
+                    [href]="lead.url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="btn-primary text-xs text-center"
+                  >
+                    Open Post
+                  </a>
+                  @if (lead.status === 'new') {
+                    <button
+                      (click)="markStatus(lead, 'replied')"
+                      class="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-xs font-medium hover:bg-green-500/30 transition-colors"
+                    >
+                      Replied
+                    </button>
+                    <button
+                      (click)="markStatus(lead, 'skipped')"
+                      class="px-3 py-1.5 bg-slate-700 text-slate-400 rounded-lg text-xs font-medium hover:bg-slate-600 transition-colors"
+                    >
+                      Skip
+                    </button>
+                  }
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  `,
+  styles: [`
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  `]
+})
+export class RedditLeadsComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+
+  tabs = [
+    { key: 'all', label: 'All' },
+    { key: 'new', label: 'New' },
+    { key: 'replied', label: 'Replied' },
+    { key: 'skipped', label: 'Skipped' },
+  ];
+
+  activeTab = 'new';
+  leads: Lead[] = [];
+  loading = true;
+  newCount = 0;
+
+  scraperRunning = false;
+  scraperMessage = '';
+  scraperOk = true;
+
+  constructor(private leadsService: LeadsService) {}
+
+  ngOnInit(): void {
+    this.loadLeads();
+    this.loadNewCount();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  loadLeads(): void {
+    this.loading = true;
+    const status = this.activeTab === 'all' ? undefined : this.activeTab;
+    this.leadsService.getLeads(status)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (leads) => {
+          this.leads = leads;
+          this.loading = false;
+        },
+        error: () => {
+          this.loading = false;
+        }
+      });
+  }
+
+  loadNewCount(): void {
+    this.leadsService.getLeads('new')
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (leads) => {
+          this.newCount = leads.length;
+        }
+      });
+  }
+
+  markStatus(lead: Lead, status: string): void {
+    this.leadsService.updateStatus(lead.id, status)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (updated) => {
+          const idx = this.leads.findIndex(l => l.id === lead.id);
+          if (idx >= 0) {
+            if (this.activeTab !== 'all' && updated.status !== this.activeTab) {
+              this.leads.splice(idx, 1);
+            } else {
+              this.leads[idx] = updated;
+            }
+          }
+          if (status === 'replied' || status === 'skipped') {
+            this.newCount = Math.max(0, this.newCount - 1);
+          }
+        }
+      });
+  }
+
+  runScraper(): void {
+    this.scraperRunning = true;
+    this.scraperMessage = '';
+
+    this.leadsService.runScraper()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.scraperRunning = false;
+          this.scraperOk = result.ok;
+          this.scraperMessage = result.ok
+            ? 'Scraper completed successfully. Refreshing leads...'
+            : `Scraper failed: ${result.error || result.stderr || 'Unknown error'}`;
+          if (result.ok) {
+            this.loadLeads();
+            this.loadNewCount();
+          }
+        },
+        error: () => {
+          this.scraperRunning = false;
+          this.scraperOk = false;
+          this.scraperMessage = 'Failed to run scraper';
+        }
+      });
+  }
+
+  scoreBadgeClass(score: number): string {
+    if (score >= 5) return 'bg-green-500/20 text-green-400';
+    if (score >= 3) return 'bg-yellow-500/20 text-yellow-400';
+    return 'bg-slate-500/20 text-slate-400';
+  }
+
+  statusBadgeClass(status: string): string {
+    if (status === 'replied') return 'bg-green-500/20 text-green-400';
+    if (status === 'skipped') return 'bg-slate-500/20 text-slate-400';
+    return 'bg-blue-500/20 text-blue-400';
+  }
+
+  timeAgo(dateStr: string): string {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return 'just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    const diffDays = Math.floor(diffHr / 24);
+    if (diffDays < 30) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  }
+}
