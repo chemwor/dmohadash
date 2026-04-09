@@ -41,8 +41,8 @@ export class LeadsService {
     return this.http.patch<Lead>(`${this.apiUrl}/${id}`, { status });
   }
 
-  runScraper(): Observable<{ ok: boolean; stdout?: string; stderr?: string; error?: string }> {
-    return this.http.post<{ ok: boolean; stdout?: string; stderr?: string; error?: string }>(
+  runScraper(): Observable<{ ok: boolean; message?: string; error?: string }> {
+    return this.http.post<{ ok: boolean; message?: string; error?: string }>(
       this.scraperUrl, {}
     ).pipe(
       catchError(error => {

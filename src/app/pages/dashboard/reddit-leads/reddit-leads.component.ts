@@ -239,20 +239,20 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (result) => {
-          this.scraperRunning = false;
-          this.scraperOk = result.ok;
-          this.scraperMessage = result.ok
-            ? 'Scraper completed successfully. Refreshing leads...'
-            : `Scraper failed: ${result.error || result.stderr || 'Unknown error'}`;
-          if (result.ok) {
+          this.scraperOk = true;
+          this.scraperMessage = result.message || 'Scraper started. Refreshing in 30 seconds...';
+          // Auto-refresh after 30 seconds to pick up new leads
+          setTimeout(() => {
             this.loadLeads();
             this.loadNewCount();
-          }
+            this.scraperRunning = false;
+            this.scraperMessage = 'Leads refreshed.';
+          }, 30000);
         },
         error: () => {
           this.scraperRunning = false;
           this.scraperOk = false;
-          this.scraperMessage = 'Failed to run scraper';
+          this.scraperMessage = 'Failed to start scraper';
         }
       });
   }
