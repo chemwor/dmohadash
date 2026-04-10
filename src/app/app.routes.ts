@@ -97,6 +97,10 @@ export const routes: Routes = [
       {
         path: 'reddit-leads',
         loadComponent: () => import('./pages/dashboard/reddit-leads/reddit-leads.component').then(m => m.RedditLeadsComponent)
+      },
+      {
+        path: 'ad-optimizer',
+        loadComponent: () => import('./pages/dashboard/ad-optimizer/ad-optimizer.component').then(m => m.AdOptimizerComponent)
       }
     ]
   },
