@@ -201,9 +201,18 @@ export interface GradeMetric {
   grade: string;
 }
 
+export interface RampUpPeriod {
+  name: string;
+  theme: string;
+  budget_planned: number;
+  budget_actual: number;
+  content_actuals: ContentActuals;
+}
+
 export interface SixMonthPlan {
   current_month: number;
   months: MonthPlan[];
+  ramp_up?: RampUpPeriod;
   current_grades: {
     traffic: {
       monthly_visitors: GradeMetric;

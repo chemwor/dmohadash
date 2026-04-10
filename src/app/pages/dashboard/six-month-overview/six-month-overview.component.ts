@@ -105,8 +105,9 @@ export class SixMonthOverviewComponent implements OnInit, OnDestroy {
     return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
   }
 
+  // Content totals per month (blog + video + newsletter + social) — matches MONTH_TARGETS in month-detail
   private readonly contentTargets: Record<number, number> = {
-    1: 28, 2: 36, 3: 34, 4: 32, 5: 40, 6: 32
+    1: 18, 2: 26, 3: 34, 4: 34, 5: 40, 6: 32
   };
 
   getContentActualTotal(month: MonthPlan): number {

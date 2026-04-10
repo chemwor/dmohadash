@@ -30,40 +30,40 @@ interface MonthConfig {
 
 const MONTH_TARGETS: Record<number, MonthConfig> = {
   1: {
-    name: 'March 2026', theme: 'Foundation & Launch',
-    focus: 'Infrastructure, baseline content, initial paid testing',
-    budget: 600,
-    targets: { visitors: 500, ads_ctr: 0.02, email_subscribers: 50, paid_cases: 5, revenue: 250, blog_posts: 4, videos: 8, newsletters: 4, social_posts: 12 }
+    name: 'April 2026', theme: 'Foundation & Launch',
+    focus: 'Build the engine. Install tracking, baseline content, $50 in revenue is a win.',
+    budget: 400,
+    targets: { visitors: 200, ads_ctr: 0.015, email_subscribers: 25, paid_cases: 1, revenue: 50, blog_posts: 4, videos: 4, newsletters: 2, social_posts: 8 }
   },
   2: {
-    name: 'April 2026', theme: 'Optimize & Amplify',
-    focus: 'Read data, cut waste, double down on winners',
-    budget: 600,
-    targets: { visitors: 750, ads_ctr: 0.025, email_subscribers: 150, paid_cases: 8, revenue: 400, blog_posts: 6, videos: 10, newsletters: 4, social_posts: 16 }
+    name: 'May 2026', theme: 'Optimize & Amplify',
+    focus: 'Read the data from M1. Cut waste, double down on what worked.',
+    budget: 500,
+    targets: { visitors: 400, ads_ctr: 0.02, email_subscribers: 75, paid_cases: 2, revenue: 100, blog_posts: 4, videos: 6, newsletters: 4, social_posts: 12 }
   },
   3: {
-    name: 'May 2026', theme: 'Content Engine & First Revenue',
-    focus: 'Scale content production, push for consistent conversions',
+    name: 'June 2026', theme: 'Content Engine',
+    focus: 'Production at scale. Consistent publishing across all channels.',
     budget: 600,
-    targets: { visitors: 1000, ads_ctr: 0.03, email_subscribers: 300, paid_cases: 12, revenue: 600, blog_posts: 6, videos: 8, newsletters: 4, social_posts: 16 }
+    targets: { visitors: 700, ads_ctr: 0.025, email_subscribers: 150, paid_cases: 4, revenue: 200, blog_posts: 6, videos: 8, newsletters: 4, social_posts: 16 }
   },
   4: {
-    name: 'June 2026', theme: 'Scale What Works',
+    name: 'July 2026', theme: 'Scale What Works',
     focus: 'Pour gas on the fire. Cut everything else.',
     budget: 750,
-    targets: { visitors: 1500, ads_ctr: 0.035, email_subscribers: 500, paid_cases: 18, revenue: 900, blog_posts: 6, videos: 6, newsletters: 4, social_posts: 16 }
+    targets: { visitors: 1000, ads_ctr: 0.03, email_subscribers: 250, paid_cases: 6, revenue: 300, blog_posts: 6, videos: 8, newsletters: 4, social_posts: 16 }
   },
   5: {
-    name: 'July 2026', theme: 'Media Push & Authority',
-    focus: 'Become the name in HOA advocacy.',
-    budget: 800,
-    targets: { visitors: 2000, ads_ctr: 0.035, email_subscribers: 750, paid_cases: 25, revenue: 1250, blog_posts: 8, videos: 8, newsletters: 4, social_posts: 20 }
+    name: 'August 2026', theme: 'Authority & Media',
+    focus: 'Become a name in HOA advocacy. PR, partnerships, guest spots.',
+    budget: 850,
+    targets: { visitors: 1500, ads_ctr: 0.03, email_subscribers: 400, paid_cases: 10, revenue: 500, blog_posts: 8, videos: 8, newsletters: 4, social_posts: 20 }
   },
   6: {
-    name: 'August 2026', theme: 'Evaluate, Decide, Scale',
-    focus: 'The verdict. Where are we, and what\'s next?',
+    name: 'September 2026', theme: 'Evaluate & Decide',
+    focus: 'The verdict. Where are we, and what\'s next? Double down or pivot.',
     budget: 900,
-    targets: { visitors: 2500, ads_ctr: 0.035, email_subscribers: 1000, paid_cases: 30, revenue: 1500, blog_posts: 6, videos: 6, newsletters: 4, social_posts: 16 }
+    targets: { visitors: 2000, ads_ctr: 0.03, email_subscribers: 600, paid_cases: 15, revenue: 750, blog_posts: 6, videos: 6, newsletters: 4, social_posts: 16 }
   }
 };
 

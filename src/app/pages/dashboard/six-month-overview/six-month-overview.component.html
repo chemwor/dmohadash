@@ -71,6 +71,41 @@
       }
     </div>
 
+    <!-- Pre-Plan Ramp-Up (March 2026) -->
+    @if (data.ramp_up) {
+      <div class="mb-4 bg-slate-800/50 rounded-xl border border-slate-700 border-dashed p-4">
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Pre-Plan Ramp-Up</p>
+            <p class="text-sm font-semibold text-slate-300">{{ data.ramp_up.name }}</p>
+          </div>
+          <span class="px-2 py-0.5 bg-slate-700 text-slate-400 rounded-full text-[10px] font-medium uppercase tracking-wider">archived</span>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+          <div>
+            <p class="text-slate-500">Ad spend</p>
+            <p class="text-slate-200 font-medium">{{ formatCurrency(data.ramp_up.budget_actual) }}</p>
+          </div>
+          <div>
+            <p class="text-slate-500">Blog posts</p>
+            <p class="text-slate-200 font-medium">{{ data.ramp_up.content_actuals.blog }}</p>
+          </div>
+          <div>
+            <p class="text-slate-500">Videos</p>
+            <p class="text-slate-200 font-medium">{{ data.ramp_up.content_actuals.video }}</p>
+          </div>
+          <div>
+            <p class="text-slate-500">Newsletters</p>
+            <p class="text-slate-200 font-medium">{{ data.ramp_up.content_actuals.newsletter }}</p>
+          </div>
+          <div>
+            <p class="text-slate-500">Social</p>
+            <p class="text-slate-200 font-medium">{{ data.ramp_up.content_actuals.social }}</p>
+          </div>
+        </div>
+      </div>
+    }
+
     <!-- Budget Tracker -->
     <div class="mb-4 bg-slate-800 rounded-xl border border-slate-700 p-4">
       <div class="flex justify-between items-center mb-2">
