@@ -4,6 +4,16 @@ const { createClient } = require('@supabase/supabase-js');
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
+const HUMAN_VOICE_RULES = `
+
+WRITING STYLE RULES (critical, must follow):
+- Never use em-dashes (—) or en-dashes (–). Use periods, commas, colons, or parentheses instead.
+- Never use these words/phrases: delve, leverage, robust, seamlessly, comprehensive, holistic, empower, streamline, cutting-edge, state-of-the-art, embark, harness, tapestry, vibrant, transformative, paramount, pivotal, moreover, furthermore, in essence, it is worth noting, in conclusion, ultimately, navigate the complexities, in today's, in the realm of.
+- Do not start sentences with "Indeed", "Notably", "Importantly", or "However,".
+- Do not end with a "Conclusion" or "In summary" paragraph that just restates the body.
+- Write plain, direct, conversational English. Short sentences. No throat-clearing.
+- Sound like a real person wrote this, not like a press release.`;
+
 async function callClaudeAPI(prompt, systemPrompt) {
   const response = await fetch(ANTHROPIC_API_URL, {
     method: 'POST',
@@ -15,7 +25,7 @@ async function callClaudeAPI(prompt, systemPrompt) {
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 4096,
-      system: systemPrompt,
+      system: (systemPrompt || '') + HUMAN_VOICE_RULES,
       messages: [{ role: 'user', content: prompt }],
     }),
   });
