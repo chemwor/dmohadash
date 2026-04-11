@@ -97,4 +97,17 @@ export class TestFunnelService {
       catchError(err => of({ ok: false, error: err?.error?.error || err.message }))
     );
   }
+
+  previewEmail(template: string, link?: string): Observable<{ template: string; subject: string; body: string; link_used?: string; error?: string }> {
+    const params = link ? `?link=${encodeURIComponent(link)}` : '';
+    return this.http.get<any>(`${this.base}/email-preview/${template}${params}`).pipe(
+      catchError(err => of({ template, subject: '', body: '', error: err?.error?.error || err.message }))
+    );
+  }
+
+  sendTestEmail(template: string, to: string, link?: string): Observable<{ ok: boolean; message?: string; subject?: string; error?: string }> {
+    return this.http.post<any>(`${this.base}/send-test-email`, { template, to, link }).pipe(
+      catchError(err => of({ ok: false, error: err?.error?.error || err.message || 'Send failed' }))
+    );
+  }
 }

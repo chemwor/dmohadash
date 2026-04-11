@@ -50,6 +50,86 @@ import { TestFunnelService, TestCase } from '../../../core/services/test-funnel.
         </div>
       }
 
+      <!-- Email Template Tester -->
+      <div class="card mb-6">
+        <h2 class="section-header mb-3">Email Template Tester</h2>
+        <p class="text-xs text-slate-500 mb-3">
+          Preview any email template and optionally send a one-off test to any address. This does not create a funnel row or touch any case data.
+        </p>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <!-- Left: controls -->
+          <div class="space-y-3">
+            <div>
+              <label class="text-[10px] uppercase tracking-wider text-slate-500 mb-1 block">Template</label>
+              <select
+                [(ngModel)]="selectedTemplate"
+                (ngModelChange)="loadEmailPreview()"
+                class="input-field text-sm"
+              >
+                @for (t of templates; track t.value) {
+                  <option [value]="t.value">{{ t.label }}</option>
+                }
+              </select>
+            </div>
+
+            <div>
+              <label class="text-[10px] uppercase tracking-wider text-slate-500 mb-1 block">Link to substitute (optional)</label>
+              <input
+                type="text"
+                [(ngModel)]="previewLink"
+                (blur)="loadEmailPreview()"
+                placeholder="https://disputemyhoa.com/case-preview/example"
+                class="input-field text-sm"
+              />
+            </div>
+
+            <div>
+              <label class="text-[10px] uppercase tracking-wider text-slate-500 mb-1 block">Send test to</label>
+              <div class="flex gap-2">
+                <input
+                  type="email"
+                  [(ngModel)]="testSendTo"
+                  placeholder="you@example.com"
+                  class="input-field text-sm flex-1"
+                />
+                <button
+                  (click)="sendTestEmail()"
+                  [disabled]="working['testSend'] || !testSendTo || !selectedTemplate"
+                  class="btn-primary text-xs whitespace-nowrap"
+                >
+                  {{ working['testSend'] ? 'Sending...' : 'Send Test' }}
+                </button>
+              </div>
+            </div>
+
+            @if (testSendBanner) {
+              <div [class]="'p-2 rounded text-xs ' + (testSendOk ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400')">
+                {{ testSendBanner }}
+              </div>
+            }
+          </div>
+
+          <!-- Right: live preview -->
+          <div class="bg-slate-900 rounded-lg p-4 border border-slate-700">
+            @if (loadingPreview) {
+              <p class="text-xs text-slate-500">Loading preview...</p>
+            } @else if (emailPreview) {
+              <div class="mb-3 pb-3 border-b border-slate-700">
+                <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Subject</p>
+                <p class="text-sm font-medium text-slate-100">{{ emailPreview.subject }}</p>
+              </div>
+              <div>
+                <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Body (plain text)</p>
+                <pre class="text-xs text-slate-300 whitespace-pre-wrap font-sans">{{ emailPreview.body }}</pre>
+              </div>
+            } @else {
+              <p class="text-xs text-slate-500">Select a template to preview.</p>
+            }
+          </div>
+        </div>
+      </div>
+
       <!-- Create Test Case -->
       <div class="card mb-6">
         <h2 class="section-header mb-3">Create New Test Case</h2>
@@ -126,6 +206,32 @@ import { TestFunnelService, TestCase } from '../../../core/services/test-funnel.
 
                 <!-- Actions -->
                 <div class="flex flex-wrap gap-1.5 flex-shrink-0">
+                  <a
+                    [href]="caseFormUrl(c.token)"
+                    target="_blank"
+                    rel="noopener"
+                    class="px-2.5 py-1 text-[11px] bg-slate-700 text-slate-300 rounded hover:bg-slate-600"
+                  >
+                    Form
+                  </a>
+                  <a
+                    [href]="casePreviewUrl(c.token)"
+                    target="_blank"
+                    rel="noopener"
+                    class="px-2.5 py-1 text-[11px] bg-slate-700 text-slate-300 rounded hover:bg-slate-600"
+                  >
+                    Preview
+                  </a>
+                  @if (c.funnel?.stage === 'purchased' || c.has_plan) {
+                    <a
+                      [href]="caseFullUrl(c.token)"
+                      target="_blank"
+                      rel="noopener"
+                      class="px-2.5 py-1 text-[11px] bg-slate-700 text-slate-300 rounded hover:bg-slate-600"
+                    >
+                      Full Case
+                    </a>
+                  }
                   @if (c.funnel?.stage === 'quick_preview_complete') {
                     <button
                       (click)="advance(c, 'full_preview_viewed')"
@@ -179,12 +285,82 @@ export class TestPipelineComponent implements OnInit, OnDestroy {
   bannerOk = true;
   working: Record<string, boolean> = {};
 
+  // Email template tester
+  templates = [
+    { value: 'quick_preview_confirmation', label: '1. Quick Preview Confirmation (immediate)' },
+    { value: 'nudge_1', label: '2. Nudge 1 — stalled at quick preview (3h)' },
+    { value: 'nudge_2', label: '3. Nudge 2 — viewed full preview, no purchase (6h)' },
+    { value: 'nudge_3', label: '4. Nudge 3 — last reminder (24h after nudge 2)' },
+    { value: 'purchase_confirmation', label: '5. Purchase Confirmation (immediate)' },
+  ];
+  selectedTemplate = 'quick_preview_confirmation';
+  previewLink = 'https://disputemyhoa.com/case-preview/example';
+  emailPreview: { subject: string; body: string } | null = null;
+  loadingPreview = false;
+  testSendTo = '';
+  testSendBanner = '';
+  testSendOk = true;
+
+  private readonly siteBase = 'https://disputemyhoa.com';
+
   constructor(private testFunnel: TestFunnelService) {}
 
   ngOnInit(): void {
     // Default to a clean test address
     this.newEmail = `test+${Date.now()}@disputemyhoa.com`;
     this.loadCases();
+    this.loadEmailPreview();
+  }
+
+  // --- View URL helpers (point at the public site) ---
+
+  caseFormUrl(token: string): string {
+    return `${this.siteBase}/start-case.html?token=${encodeURIComponent(token)}`;
+  }
+
+  casePreviewUrl(token: string): string {
+    return `${this.siteBase}/case-preview/${encodeURIComponent(token)}`;
+  }
+
+  caseFullUrl(token: string): string {
+    return `${this.siteBase}/case/${encodeURIComponent(token)}`;
+  }
+
+  // --- Email template tester ---
+
+  loadEmailPreview(): void {
+    if (!this.selectedTemplate) return;
+    this.loadingPreview = true;
+    this.testFunnel.previewEmail(this.selectedTemplate, this.previewLink || undefined)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result: any) => {
+          this.loadingPreview = false;
+          if (result?.subject) {
+            this.emailPreview = { subject: result.subject, body: result.body };
+          } else {
+            this.emailPreview = null;
+          }
+        },
+        error: () => { this.loadingPreview = false; }
+      });
+  }
+
+  sendTestEmail(): void {
+    if (!this.testSendTo || !this.selectedTemplate) return;
+    this.working['testSend'] = true;
+    this.testSendBanner = '';
+    this.testFunnel.sendTestEmail(this.selectedTemplate, this.testSendTo, this.previewLink || undefined)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.working['testSend'] = false;
+          this.testSendOk = result.ok;
+          this.testSendBanner = result.ok
+            ? `Sent to ${this.testSendTo}. Check inbox + spam.`
+            : (result.error || 'Send failed');
+        }
+      });
   }
 
   ngOnDestroy(): void {
