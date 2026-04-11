@@ -64,8 +64,9 @@ export class AdOptimizerService {
     );
   }
 
-  approveProposal(id: string): Observable<{ ok: boolean; result?: any }> {
-    return this.http.post<{ ok: boolean; result?: any }>(`${this.base}/proposals/${id}/approve`, {});
+  approveProposal(id: string, payloadOverride?: Record<string, any>): Observable<{ ok: boolean; result?: any }> {
+    const body = payloadOverride ? { payload_override: payloadOverride } : {};
+    return this.http.post<{ ok: boolean; result?: any }>(`${this.base}/proposals/${id}/approve`, body);
   }
 
   rejectProposal(id: string): Observable<{ ok: boolean }> {

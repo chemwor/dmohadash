@@ -1,12 +1,13 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 import { AdOptimizerService, AdProposal } from '../../../core/services/ad-optimizer.service';
 
 @Component({
   selector: 'app-ad-optimizer',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="p-4 md:p-6 lg:p-8">
       <!-- Header -->
@@ -214,13 +215,23 @@ import { AdOptimizerService, AdProposal } from '../../../core/services/ad-optimi
                 <!-- Actions -->
                 @if (p.status === 'pending') {
                   <div class="flex flex-col gap-1.5 flex-shrink-0">
-                    <button
-                      (click)="approve(p)"
-                      [disabled]="working[p.id]"
-                      class="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-xs font-medium hover:bg-green-500/30 transition-colors disabled:opacity-50"
-                    >
-                      {{ working[p.id] ? '...' : 'Approve' }}
-                    </button>
+                    @if (p.type === 'new_ad_copy') {
+                      <button
+                        (click)="openReview(p)"
+                        [disabled]="working[p.id]"
+                        class="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-xs font-medium hover:bg-green-500/30 transition-colors disabled:opacity-50"
+                      >
+                        Review &amp; Create
+                      </button>
+                    } @else {
+                      <button
+                        (click)="approve(p)"
+                        [disabled]="working[p.id]"
+                        class="px-3 py-1.5 bg-green-500/20 text-green-400 rounded-lg text-xs font-medium hover:bg-green-500/30 transition-colors disabled:opacity-50"
+                      >
+                        {{ working[p.id] ? '...' : 'Approve' }}
+                      </button>
+                    }
                     <button
                       (click)="reject(p)"
                       [disabled]="working[p.id]"
@@ -242,6 +253,120 @@ import { AdOptimizerService, AdProposal } from '../../../core/services/ad-optimi
         </div>
       }
     </div>
+
+    <!-- Review Modal: confirms ad creation, allows last-minute edits -->
+    @if (reviewProposal) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" (click)="cancelReview()">
+        <div class="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" (click)="$event.stopPropagation()">
+          <!-- Header -->
+          <div class="flex items-center justify-between p-5 border-b border-slate-700">
+            <div>
+              <h3 class="text-lg font-semibold text-slate-100">Review New Ad</h3>
+              <p class="text-xs text-slate-400 mt-0.5">Confirm or edit before publishing to Google Ads</p>
+            </div>
+            <button (click)="cancelReview()" class="text-slate-500 hover:text-slate-300 text-2xl leading-none">&times;</button>
+          </div>
+
+          <!-- Body -->
+          <div class="flex-1 overflow-y-auto p-5 space-y-4">
+            <div class="bg-slate-800 rounded-lg p-3 border border-slate-700">
+              <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Destination</p>
+              <p class="text-sm text-slate-100">Ad Group: <span class="text-indigo-400">{{ reviewProposal.payload['ad_group_name'] }}</span></p>
+              <p class="text-xs text-slate-400 mt-1 break-all">{{ reviewProposal.payload['final_url'] }}</p>
+            </div>
+
+            @if (reviewProposal.payload['rationale']) {
+              <div class="bg-indigo-500/5 border-l-2 border-indigo-500/40 px-3 py-2 rounded">
+                <p class="text-[10px] uppercase tracking-wider text-indigo-400 mb-1">Strategic Angle</p>
+                <p class="text-xs text-slate-300">{{ reviewProposal.payload['rationale'] }}</p>
+              </div>
+            }
+
+            <!-- Editable Headlines -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-[10px] uppercase tracking-wider text-slate-500">Headlines (3-15, max 30 chars each)</p>
+                <span class="text-[10px] text-slate-500">{{ editHeadlines.length }} total</span>
+              </div>
+              <div class="space-y-1.5">
+                @for (h of editHeadlines; track i; let i = $index) {
+                  <div class="flex items-center gap-2">
+                    <input
+                      type="text"
+                      [(ngModel)]="editHeadlines[i]"
+                      maxlength="30"
+                      class="flex-1 px-2 py-1.5 text-xs bg-slate-800 border border-slate-700 rounded text-slate-100 focus:outline-none focus:border-indigo-500"
+                    />
+                    <span [class]="'text-[10px] w-10 text-right ' + (editHeadlines[i].length > 30 ? 'text-red-400' : 'text-slate-500')">
+                      {{ editHeadlines[i].length }}/30
+                    </span>
+                    <button (click)="removeHeadline(i)" class="text-slate-500 hover:text-red-400 text-xs px-1">&times;</button>
+                  </div>
+                }
+              </div>
+              @if (editHeadlines.length < 15) {
+                <button (click)="addHeadline()" class="text-[11px] text-indigo-400 hover:text-indigo-300 mt-2">+ Add headline</button>
+              }
+            </div>
+
+            <!-- Editable Descriptions -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-[10px] uppercase tracking-wider text-slate-500">Descriptions (2-4, max 90 chars each)</p>
+                <span class="text-[10px] text-slate-500">{{ editDescriptions.length }} total</span>
+              </div>
+              <div class="space-y-1.5">
+                @for (d of editDescriptions; track i; let i = $index) {
+                  <div class="flex items-start gap-2">
+                    <textarea
+                      [(ngModel)]="editDescriptions[i]"
+                      maxlength="90"
+                      rows="2"
+                      class="flex-1 px-2 py-1.5 text-xs bg-slate-800 border border-slate-700 rounded text-slate-100 focus:outline-none focus:border-indigo-500 resize-none"
+                    ></textarea>
+                    <span [class]="'text-[10px] w-10 text-right pt-2 ' + (editDescriptions[i].length > 90 ? 'text-red-400' : 'text-slate-500')">
+                      {{ editDescriptions[i].length }}/90
+                    </span>
+                    <button (click)="removeDescription(i)" class="text-slate-500 hover:text-red-400 text-xs px-1 pt-2">&times;</button>
+                  </div>
+                }
+              </div>
+              @if (editDescriptions.length < 4) {
+                <button (click)="addDescription()" class="text-[11px] text-indigo-400 hover:text-indigo-300 mt-2">+ Add description</button>
+              }
+            </div>
+
+            <!-- Validation warning -->
+            @if (reviewError) {
+              <div class="bg-red-500/10 border border-red-500/30 rounded px-3 py-2 text-xs text-red-400">
+                {{ reviewError }}
+              </div>
+            }
+
+            <p class="text-[10px] text-slate-500 italic">
+              When you confirm, this ad goes live in Google Ads and will start serving against your existing ads automatically. The campaign must be enabled for traffic to start.
+            </p>
+          </div>
+
+          <!-- Footer -->
+          <div class="flex items-center justify-end gap-2 p-5 border-t border-slate-700">
+            <button
+              (click)="cancelReview()"
+              class="px-4 py-2 text-sm bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600"
+            >
+              Cancel
+            </button>
+            <button
+              (click)="confirmReview()"
+              [disabled]="reviewSubmitting"
+              class="px-4 py-2 text-sm bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 font-medium disabled:opacity-50"
+            >
+              {{ reviewSubmitting ? 'Creating...' : 'Confirm &amp; Create Ad' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
   `,
 })
 export class AdOptimizerComponent implements OnInit, OnDestroy {
@@ -264,6 +389,13 @@ export class AdOptimizerComponent implements OnInit, OnDestroy {
   generatingCopy = false;
   banner = '';
   bannerOk = true;
+
+  // Review modal state
+  reviewProposal: AdProposal | null = null;
+  editHeadlines: string[] = [];
+  editDescriptions: string[] = [];
+  reviewSubmitting = false;
+  reviewError = '';
 
   constructor(private optimizer: AdOptimizerService) {}
 
@@ -400,6 +532,103 @@ export class AdOptimizerComponent implements OnInit, OnDestroy {
           this.proposals = this.proposals.filter(x => x.id !== p.id);
         },
         error: () => { this.working[p.id] = false; }
+      });
+  }
+
+  // --- Review modal for new_ad_copy proposals ---
+
+  openReview(p: AdProposal): void {
+    this.reviewProposal = p;
+    this.editHeadlines = [...(p.payload['headlines'] || [])];
+    this.editDescriptions = [...(p.payload['descriptions'] || [])];
+    this.reviewError = '';
+    this.reviewSubmitting = false;
+  }
+
+  cancelReview(): void {
+    if (this.reviewSubmitting) return;
+    this.reviewProposal = null;
+    this.editHeadlines = [];
+    this.editDescriptions = [];
+    this.reviewError = '';
+  }
+
+  addHeadline(): void {
+    if (this.editHeadlines.length < 15) this.editHeadlines.push('');
+  }
+
+  removeHeadline(i: number): void {
+    if (this.editHeadlines.length > 3) this.editHeadlines.splice(i, 1);
+  }
+
+  addDescription(): void {
+    if (this.editDescriptions.length < 4) this.editDescriptions.push('');
+  }
+
+  removeDescription(i: number): void {
+    if (this.editDescriptions.length > 2) this.editDescriptions.splice(i, 1);
+  }
+
+  confirmReview(): void {
+    if (!this.reviewProposal) return;
+
+    // Validate
+    const headlines = this.editHeadlines.map(h => h.trim()).filter(Boolean);
+    const descriptions = this.editDescriptions.map(d => d.trim()).filter(Boolean);
+
+    if (headlines.length < 3) {
+      this.reviewError = 'Need at least 3 headlines.';
+      return;
+    }
+    if (headlines.length > 15) {
+      this.reviewError = 'Maximum 15 headlines.';
+      return;
+    }
+    if (descriptions.length < 2) {
+      this.reviewError = 'Need at least 2 descriptions.';
+      return;
+    }
+    if (descriptions.length > 4) {
+      this.reviewError = 'Maximum 4 descriptions.';
+      return;
+    }
+    const tooLongHeadline = headlines.find(h => h.length > 30);
+    if (tooLongHeadline) {
+      this.reviewError = `Headline over 30 chars: "${tooLongHeadline}"`;
+      return;
+    }
+    const tooLongDescription = descriptions.find(d => d.length > 90);
+    if (tooLongDescription) {
+      this.reviewError = `Description over 90 chars: "${tooLongDescription}"`;
+      return;
+    }
+
+    this.reviewSubmitting = true;
+    this.reviewError = '';
+
+    const p = this.reviewProposal;
+    const override = { headlines, descriptions };
+
+    this.optimizer.approveProposal(p.id, override)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.reviewSubmitting = false;
+          if (result.ok) {
+            this.proposals = this.proposals.filter(x => x.id !== p.id);
+            this.reviewProposal = null;
+            this.editHeadlines = [];
+            this.editDescriptions = [];
+            this.banner = `Created new ad in ${p.payload['ad_group_name'] || 'ad group'}.`;
+            this.bannerOk = true;
+          } else {
+            this.reviewError = result.result?.error || 'Failed to create ad';
+          }
+        },
+        error: (err) => {
+          this.reviewSubmitting = false;
+          this.reviewError = err?.error?.error || err?.message || 'Failed to create ad';
+        }
       });
   }
 
