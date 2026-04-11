@@ -315,7 +315,7 @@ export class TestPipelineComponent implements OnInit, OnDestroy {
   // --- View URL helpers (point at the public site) ---
 
   caseFormUrl(token: string): string {
-    return `${this.siteBase}/start-case.html?case=${encodeURIComponent(token)}`;
+    return `${this.siteBase}/start-case-full.html?case=${encodeURIComponent(token)}`;
   }
 
   casePreviewUrl(token: string): string {
