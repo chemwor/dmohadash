@@ -1,18 +1,19 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 
 import { KlaviyoService, KlaviyoData } from '../../../core/services/klaviyo.service';
-import { GoogleAdsService, GoogleAdsData, GoogleAdsPeriod, Campaign } from '../../../core/services/google-ads.service';
+import { GoogleAdsService, GoogleAdsData, GoogleAdsPeriod, Campaign, ManagedCampaign } from '../../../core/services/google-ads.service';
 import { AdSuggestionsService, AdSuggestionsData, AdSuggestionsRequest } from '../../../core/services/ad-suggestions.service';
 
 @Component({
   selector: 'app-marketing',
   standalone: true,
-  imports: [CommonModule, FormsModule, LoadingSkeletonComponent],
+  imports: [CommonModule, FormsModule, RouterLink, LoadingSkeletonComponent],
   templateUrl: './marketing.component.html'
 })
 export class MarketingComponent implements OnInit, OnDestroy {
@@ -21,6 +22,13 @@ export class MarketingComponent implements OnInit, OnDestroy {
   klaviyoData: KlaviyoData | null = null;
   googleAdsData: GoogleAdsData | null = null;
   suggestionsData: AdSuggestionsData | null = null;
+
+  // Managed campaigns (full structure with ad groups + ads)
+  managedCampaigns: ManagedCampaign[] = [];
+  managedCampaignsLoading = false;
+  managedCampaignsError = '';
+  expandedCampaigns: Record<string, boolean> = {};
+  campaignStatusUpdating: Record<string, boolean> = {};
 
   selectedPeriod: GoogleAdsPeriod = 'today';
   periods = [
@@ -91,11 +99,64 @@ export class MarketingComponent implements OnInit, OnDestroy {
     this.isRefreshing = true;
     this.loadKlaviyoData();
     this.loadGoogleAdsData();
+    this.loadManagedCampaigns();
 
     setTimeout(() => {
       this.isRefreshing = false;
       this.lastRefreshed = new Date();
     }, 1000);
+  }
+
+  loadManagedCampaigns(): void {
+    this.managedCampaignsLoading = true;
+    this.managedCampaignsError = '';
+    this.googleAdsService.getAllCampaigns()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.managedCampaigns = result.campaigns || [];
+          this.managedCampaignsLoading = false;
+          if (result.error) {
+            this.managedCampaignsError = result.error;
+          }
+        },
+        error: (err) => {
+          this.managedCampaignsLoading = false;
+          this.managedCampaignsError = err.message || 'Failed to load campaigns';
+        }
+      });
+  }
+
+  toggleCampaignExpanded(campaignId: string): void {
+    this.expandedCampaigns[campaignId] = !this.expandedCampaigns[campaignId];
+  }
+
+  toggleCampaignStatus(campaign: ManagedCampaign): void {
+    const newStatus = campaign.status === 'ENABLED' ? 'PAUSED' : 'ENABLED';
+    const action = newStatus === 'ENABLED' ? 'enable' : 'pause';
+    if (!confirm(`${action[0].toUpperCase() + action.slice(1)} campaign "${campaign.name}"?`)) return;
+
+    this.campaignStatusUpdating[campaign.id] = true;
+    this.googleAdsService.setCampaignStatus(campaign.id, newStatus)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          campaign.status = newStatus;
+          this.campaignStatusUpdating[campaign.id] = false;
+        },
+        error: (err) => {
+          this.campaignStatusUpdating[campaign.id] = false;
+          alert(`Failed to ${action} campaign: ${err?.error?.error || err.message}`);
+        }
+      });
+  }
+
+  campaignStatusBadgeClass(status: string): string {
+    switch (status) {
+      case 'ENABLED': return 'bg-green-500/20 text-green-400 border-green-500/30';
+      case 'PAUSED': return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
+      default: return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+    }
   }
 
   loadKlaviyoData(): void {

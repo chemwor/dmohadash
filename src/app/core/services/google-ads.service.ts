@@ -82,6 +82,57 @@ export interface GoogleAdsData {
 
 export type GoogleAdsPeriod = 'today' | 'yesterday' | 'week' | 'month' | 'all';
 
+// --- Managed Campaigns (full structure with ad groups, keywords, ads) ---
+
+export interface ManagedKeyword {
+  text: string;
+  match_type: string;
+  status: string;
+}
+
+export interface ManagedAd {
+  id: string;
+  status: string;
+  headlines: string[];
+  descriptions: string[];
+  final_urls: string[];
+}
+
+export interface ManagedAdGroup {
+  id: string;
+  name: string;
+  status: string;
+  max_cpc_usd: number;
+  keywords: ManagedKeyword[];
+  ads: ManagedAd[];
+}
+
+export interface ManagedCampaign {
+  id: string;
+  name: string;
+  status: string;
+  channel_type: string;
+  daily_budget_usd: number;
+  metrics_30d: {
+    spend: number;
+    clicks: number;
+    impressions: number;
+    conversions: number;
+    ctr?: number;
+    cpc?: number;
+  };
+  ad_groups: ManagedAdGroup[];
+  ad_group_count: number;
+  keyword_count: number;
+  ad_count: number;
+}
+
+export interface ManagedCampaignsResponse {
+  campaigns: ManagedCampaign[];
+  fetched_at?: string;
+  error?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -117,5 +168,18 @@ export class GoogleAdsService {
 
   uploadOfflineConversions(): Observable<any> {
     return this.http.post(`${this.apiUrl}/offline-conversions`, {});
+  }
+
+  getAllCampaigns(): Observable<ManagedCampaignsResponse> {
+    return this.http.get<ManagedCampaignsResponse>(`${this.apiUrl}/all-campaigns`).pipe(
+      catchError(error => {
+        console.error('Managed campaigns error:', error);
+        return of({ campaigns: [], error: error.message || 'Failed to fetch campaigns' });
+      })
+    );
+  }
+
+  setCampaignStatus(campaignId: string, status: 'ENABLED' | 'PAUSED'): Observable<any> {
+    return this.http.post(`${this.apiUrl}/campaigns/${campaignId}/status`, { status });
   }
 }
