@@ -74,6 +74,12 @@ export class TestFunnelService {
     );
   }
 
+  regeneratePreview(token: string): Observable<any> {
+    return this.http.post(`${this.base}/${token}/regenerate-preview`, {}).pipe(
+      catchError(err => of({ ok: false, error: err?.error?.error || err.message }))
+    );
+  }
+
   planStatus(token: string): Observable<any> {
     return this.http.get(`${this.base}/${token}/plan-status`).pipe(
       catchError(err => of({ has_plan: false, error: err?.error?.error || err.message }))

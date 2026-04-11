@@ -250,6 +250,13 @@ import { TestFunnelService, TestCase } from '../../../core/services/test-funnel.
                       → Purchased
                     </button>
                   }
+                  <button
+                    (click)="regenPreview(c)"
+                    [disabled]="working[c.token]"
+                    class="px-2.5 py-1 text-[11px] bg-amber-500/20 text-amber-400 rounded hover:bg-amber-500/30 disabled:opacity-50"
+                  >
+                    Regen Preview
+                  </button>
                   @if (!c.has_plan) {
                     <button
                       (click)="generatePlan(c)"
@@ -417,6 +424,24 @@ export class TestPipelineComponent implements OnInit, OnDestroy {
           } else {
             this.bannerOk = false;
             this.banner = result.error || 'Advance failed';
+          }
+        }
+      });
+  }
+
+  regenPreview(c: TestCase): void {
+    this.working[c.token] = true;
+    this.testFunnel.regeneratePreview(c.token)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result: any) => {
+          this.working[c.token] = false;
+          if (result.ok) {
+            this.bannerOk = true;
+            this.banner = result.message || 'Preview regeneration started. Refresh case-preview page in ~30s.';
+          } else {
+            this.bannerOk = false;
+            this.banner = result.error || 'Regenerate failed';
           }
         }
       });
