@@ -141,8 +141,12 @@ export class GoogleAdsService {
 
   constructor(private http: HttpClient) {}
 
-  getData(period: GoogleAdsPeriod = 'today'): Observable<GoogleAdsData> {
-    return this.http.get<GoogleAdsData>(`${this.apiUrl}?period=${period}`).pipe(
+  getData(period: GoogleAdsPeriod = 'today', campaignName?: string): Observable<GoogleAdsData> {
+    const params: string[] = [`period=${period}`];
+    if (campaignName) {
+      params.push(`campaign=${encodeURIComponent(campaignName)}`);
+    }
+    return this.http.get<GoogleAdsData>(`${this.apiUrl}?${params.join('&')}`).pipe(
       catchError(error => {
         console.error('Google Ads service error:', error);
         return of({

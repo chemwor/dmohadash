@@ -38,6 +38,9 @@ export class MarketingComponent implements OnInit, OnDestroy {
     { value: 'month' as GoogleAdsPeriod, label: 'This Month' }
   ];
 
+  // Campaign filter for the top-level stats. Empty string = all campaigns.
+  selectedCampaignFilter = '';
+
   // Date range for AI analysis
   analysisStartDate: string = '';
   analysisEndDate: string = '';
@@ -184,7 +187,7 @@ export class MarketingComponent implements OnInit, OnDestroy {
     this.loadingStates.googleAds = true;
     this.errors.googleAds = '';
 
-    this.googleAdsService.getData(this.selectedPeriod)
+    this.googleAdsService.getData(this.selectedPeriod, this.selectedCampaignFilter || undefined)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (data) => {
@@ -205,6 +208,12 @@ export class MarketingComponent implements OnInit, OnDestroy {
     this.selectedPeriod = period;
     this.loadGoogleAdsData();
     // Clear previous suggestions when period changes
+    this.suggestionsData = null;
+  }
+
+  setCampaignFilter(campaignName: string): void {
+    this.selectedCampaignFilter = campaignName;
+    this.loadGoogleAdsData();
     this.suggestionsData = null;
   }
 
