@@ -35,6 +35,24 @@ import { AdOptimizerService, AdProposal } from '../../../core/services/ad-optimi
             }
           </button>
           <button
+            (click)="generateCopy()"
+            [disabled]="generatingCopy"
+            class="btn-secondary text-sm flex items-center gap-2"
+          >
+            @if (generatingCopy) {
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              Writing...
+            } @else {
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+              </svg>
+              Generate Fresh Copy
+            }
+          </button>
+          <button
             (click)="launchM1()"
             [disabled]="launching"
             class="btn-primary text-sm flex items-center gap-2"
@@ -139,6 +157,58 @@ import { AdOptimizerService, AdProposal } from '../../../core/services/ad-optimi
                       <div><span class="text-slate-500">CTR:</span> <span class="text-slate-300">{{ (p.payload['ctr_14d'] * 100).toFixed(2) }}%</span></div>
                     }
                   </div>
+
+                  <!-- New Ad Copy proposal: show headlines + descriptions -->
+                  @if (p.type === 'new_ad_copy') {
+                    <div class="mt-3 space-y-3">
+                      @if (p.payload['ad_group_name']) {
+                        <div class="text-xs text-slate-500">
+                          Ad Group: <span class="text-slate-300">{{ p.payload['ad_group_name'] }}</span>
+                        </div>
+                      }
+                      @if (p.payload['rationale']) {
+                        <div class="px-3 py-2 bg-indigo-500/5 border-l-2 border-indigo-500/40 rounded text-xs text-slate-300">
+                          <span class="text-indigo-400 font-medium">Angle:</span> {{ p.payload['rationale'] }}
+                        </div>
+                      }
+                      @if (p.payload['current_metrics_14d']) {
+                        <div class="text-[10px] text-slate-500 flex flex-wrap gap-x-3 gap-y-0.5">
+                          <span>14d: {{ p.payload['current_metrics_14d']['clicks'] || 0 }} clicks,</span>
+                          <span>{{ p.payload['current_metrics_14d']['impressions'] || 0 }} impressions,</span>
+                          <span>{{ p.payload['current_metrics_14d']['conversions'] || 0 }} conversions,</span>
+                          <span>CTR {{ ((p.payload['current_metrics_14d']['ctr'] || 0) * 100).toFixed(2) }}%</span>
+                        </div>
+                      }
+
+                      @if (p.payload['headlines']?.length) {
+                        <div>
+                          <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-1.5">Headlines ({{ p.payload['headlines'].length }})</p>
+                          <ul class="space-y-1">
+                            @for (h of p.payload['headlines']; track $index) {
+                              <li class="text-xs text-slate-200 px-2 py-1 bg-slate-800 rounded flex items-center justify-between gap-2">
+                                <span class="truncate">{{ h }}</span>
+                                <span class="text-[10px] text-slate-500 flex-shrink-0">{{ h.length }}/30</span>
+                              </li>
+                            }
+                          </ul>
+                        </div>
+                      }
+
+                      @if (p.payload['descriptions']?.length) {
+                        <div>
+                          <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-1.5">Descriptions ({{ p.payload['descriptions'].length }})</p>
+                          <ul class="space-y-1">
+                            @for (d of p.payload['descriptions']; track $index) {
+                              <li class="text-xs text-slate-200 px-2 py-1.5 bg-slate-800 rounded flex items-start justify-between gap-2">
+                                <span>{{ d }}</span>
+                                <span class="text-[10px] text-slate-500 flex-shrink-0">{{ d.length }}/90</span>
+                              </li>
+                            }
+                          </ul>
+                        </div>
+                      }
+                    </div>
+                  }
                 </div>
 
                 <!-- Actions -->
@@ -191,6 +261,7 @@ export class AdOptimizerComponent implements OnInit, OnDestroy {
 
   launching = false;
   analyzing = false;
+  generatingCopy = false;
   banner = '';
   bannerOk = true;
 
@@ -268,6 +339,35 @@ export class AdOptimizerComponent implements OnInit, OnDestroy {
       });
   }
 
+  generateCopy(): void {
+    this.generatingCopy = true;
+    this.banner = '';
+    this.optimizer.generateCopy()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result: any) => {
+          this.bannerOk = result.ok;
+          if (!result.ok) {
+            this.generatingCopy = false;
+            this.banner = result.error || 'Copy generation failed';
+            return;
+          }
+          this.banner = result.message || 'Writing fresh copy in the background. Refreshing in 45 seconds...';
+          // Auto-refresh after 45s to pick up new proposals
+          setTimeout(() => {
+            this.generatingCopy = false;
+            this.banner = 'Refreshed. Check the Pending tab.';
+            if (this.activeTab === 'pending') this.loadProposals();
+          }, 45000);
+        },
+        error: () => {
+          this.generatingCopy = false;
+          this.bannerOk = false;
+          this.banner = 'Copy generation failed';
+        }
+      });
+  }
+
   approve(p: AdProposal): void {
     this.working[p.id] = true;
     this.optimizer.approveProposal(p.id)
@@ -308,6 +408,7 @@ export class AdOptimizerComponent implements OnInit, OnDestroy {
       case 'pause_keyword': return 'bg-orange-500/20 text-orange-400';
       case 'add_negative': return 'bg-red-500/20 text-red-400';
       case 'budget_alert': return 'bg-yellow-500/20 text-yellow-400';
+      case 'new_ad_copy': return 'bg-indigo-500/20 text-indigo-400';
       default: return 'bg-slate-500/20 text-slate-400';
     }
   }
@@ -317,6 +418,7 @@ export class AdOptimizerComponent implements OnInit, OnDestroy {
       case 'pause_keyword': return 'Pause Keyword';
       case 'add_negative': return 'Add Negative';
       case 'budget_alert': return 'Budget Alert';
+      case 'new_ad_copy': return 'New Ad Copy';
       default: return type;
     }
   }

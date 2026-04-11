@@ -4,7 +4,7 @@ import { Observable, catchError, of } from 'rxjs';
 
 export interface AdProposal {
   id: string;
-  type: 'pause_keyword' | 'add_negative' | 'budget_alert' | string;
+  type: 'pause_keyword' | 'add_negative' | 'budget_alert' | 'new_ad_copy' | string;
   payload: Record<string, any>;
   reason: string;
   status: 'pending' | 'approved' | 'rejected' | 'applied' | 'failed';
@@ -46,6 +46,12 @@ export class AdOptimizerService {
   analyze(): Observable<AnalyzeResult> {
     return this.http.post<AnalyzeResult>(`${this.base}/analyze`, {}).pipe(
       catchError(err => of({ ok: false, error: err?.error?.error || err.message || 'Analyze failed' }))
+    );
+  }
+
+  generateCopy(): Observable<{ ok: boolean; proposals_created?: number; ad_groups_analyzed?: number; error?: string }> {
+    return this.http.post<{ ok: boolean; proposals_created?: number; ad_groups_analyzed?: number; error?: string }>(`${this.base}/generate-copy`, {}).pipe(
+      catchError(err => of({ ok: false, error: err?.error?.error || err.message || 'Copy generation failed' }))
     );
   }
 
