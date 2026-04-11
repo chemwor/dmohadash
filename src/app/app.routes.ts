@@ -101,6 +101,10 @@ export const routes: Routes = [
       {
         path: 'ad-optimizer',
         loadComponent: () => import('./pages/dashboard/ad-optimizer/ad-optimizer.component').then(m => m.AdOptimizerComponent)
+      },
+      {
+        path: 'test-pipeline',
+        loadComponent: () => import('./pages/dashboard/test-pipeline/test-pipeline.component').then(m => m.TestPipelineComponent)
       }
     ]
   },
