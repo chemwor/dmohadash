@@ -7,6 +7,7 @@ import { LoadingSkeletonComponent } from '../../../shared/components/loading-ske
 import { CommandCenterService } from '../../../core/services/command-center.service';
 import { ChecklistsService } from '../../../core/services/checklists.service';
 import { DailyGardenService, GardenTask } from '../../../core/services/daily-garden.service';
+import { EmailFunnelService, FunnelMetrics } from '../../../core/services/email-funnel.service';
 import { CommandCenterData, ChecklistItem } from '../../../interfaces/dashboard.interfaces';
 
 @Component({
@@ -29,15 +30,20 @@ export class CommandCenterComponent implements OnInit, OnDestroy {
     { key: 'content_post', label: 'Post 1 piece of content', description: 'TikTok, Reel, or blog post from the content pipeline', link: '/dashboard/content', completed: false },
     { key: 'check_ads', label: 'Check Google Ads performance', description: 'Review spend, CTR, conversions. Approve/reject any proposals.', link: '/dashboard/marketing', completed: false },
     { key: 'social_engage', label: 'Engage on social media', description: 'Comment on 3 HOA-related posts on TikTok, IG, or Facebook', completed: false },
-    { key: 'check_funnel', label: 'Check the email funnel', description: 'Review email_funnel table for stalled leads. Run nudges if needed.', link: '/dashboard/test-pipeline', completed: false },
+    { key: 'check_funnel', label: 'Check the email funnel', description: 'Review funnel metrics above. Are people stalling? Run nudges if needed.', completed: false },
     { key: 'review_leads', label: 'Review new Reddit leads', description: 'Run the scraper, mark irrelevant ones, prioritize high-score leads', link: '/dashboard/reddit-leads', completed: false },
   ];
   gardenCompleted = 0;
+
+  // Email funnel metrics
+  funnel: FunnelMetrics | null = null;
+  funnelLoading = false;
 
   constructor(
     private commandCenterService: CommandCenterService,
     private checklistsService: ChecklistsService,
     private gardenService: DailyGardenService,
+    private funnelService: EmailFunnelService,
   ) {}
 
   ngOnInit(): void {
@@ -49,6 +55,17 @@ export class CommandCenterComponent implements OnInit, OnDestroy {
       .subscribe(() => this.loadData());
 
     this.loadGarden();
+    this.loadFunnel();
+  }
+
+  loadFunnel(): void {
+    this.funnelLoading = true;
+    this.funnelService.getMetrics()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(data => {
+        this.funnel = data;
+        this.funnelLoading = false;
+      });
   }
 
   loadGarden(): void {
