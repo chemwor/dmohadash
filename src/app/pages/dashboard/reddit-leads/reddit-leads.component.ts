@@ -1,12 +1,13 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 import { LeadsService, Lead } from '../../../core/services/leads.service';
 
 @Component({
   selector: 'app-reddit-leads',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="p-4 md:p-6 lg:p-8">
       <!-- Header -->
@@ -123,6 +124,13 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
                   >
                     Open Post
                   </a>
+                  <button
+                    (click)="openDraftReply(lead)"
+                    [disabled]="drafting[lead.id]"
+                    class="px-3 py-1.5 bg-indigo-500/20 text-indigo-400 rounded-lg text-xs font-medium hover:bg-indigo-500/30 transition-colors disabled:opacity-50"
+                  >
+                    {{ drafting[lead.id] ? 'Drafting...' : 'Draft Reply' }}
+                  </button>
                   @if (lead.status === 'new') {
                     <button
                       (click)="markStatus(lead, 'replied')"
@@ -144,6 +152,75 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
         </div>
       }
     </div>
+
+    <!-- Draft Reply Modal -->
+    @if (draftLead) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" (click)="closeDraft()">
+        <div class="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" (click)="$event.stopPropagation()">
+          <div class="flex items-center justify-between p-5 border-b border-slate-700">
+            <div class="flex-1 min-w-0 mr-4">
+              <h3 class="text-lg font-semibold text-slate-100">Draft Reply</h3>
+              <p class="text-xs text-slate-400 mt-0.5 truncate">r/{{ draftLead.subreddit }} : {{ draftLead.title }}</p>
+            </div>
+            <button (click)="closeDraft()" class="text-slate-500 hover:text-slate-300 text-2xl leading-none">&times;</button>
+          </div>
+
+          <div class="flex-1 overflow-y-auto p-5 space-y-4">
+            @if (draftLoading) {
+              <div class="flex items-center gap-3 text-slate-400 py-8 justify-center">
+                <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="text-sm">Scraping post and drafting reply...</span>
+              </div>
+            } @else if (draftError) {
+              <div class="bg-red-500/10 border border-red-500/20 rounded p-3 text-sm text-red-400">{{ draftError }}</div>
+            } @else if (draftText) {
+              <textarea
+                [(ngModel)]="draftText"
+                class="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                rows="14"
+              ></textarea>
+              <p class="text-[10px] text-slate-500">Edit freely. When you're happy with it, copy and paste to Reddit.</p>
+            }
+          </div>
+
+          <div class="flex items-center justify-between gap-2 p-5 border-t border-slate-700">
+            <a
+              [href]="draftLead.url"
+              target="_blank"
+              rel="noopener"
+              class="text-xs text-indigo-400 hover:text-indigo-300 underline"
+            >
+              Open post on Reddit
+            </a>
+            <div class="flex gap-2">
+              @if (draftText && !draftLoading) {
+                <button
+                  (click)="copyDraft()"
+                  class="px-4 py-2 text-sm bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 font-medium"
+                >
+                  {{ copied ? 'Copied!' : 'Copy to Clipboard' }}
+                </button>
+                <button
+                  (click)="copyAndMarkReplied()"
+                  class="px-4 py-2 text-sm bg-indigo-500/20 text-indigo-400 rounded-lg hover:bg-indigo-500/30 font-medium"
+                >
+                  Copy + Mark Replied
+                </button>
+              }
+              <button
+                (click)="closeDraft()"
+                class="px-4 py-2 text-sm bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: [`
     .line-clamp-2 {
@@ -156,6 +233,14 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
 })
 export class RedditLeadsComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
+
+  // Draft reply state
+  drafting: Record<string, boolean> = {};
+  draftLead: Lead | null = null;
+  draftText = '';
+  draftLoading = false;
+  draftError = '';
+  copied = false;
 
   tabs = [
     { key: 'all', label: 'All' },
@@ -282,5 +367,58 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
     const diffDays = Math.floor(diffHr / 24);
     if (diffDays < 30) return `${diffDays}d ago`;
     return date.toLocaleDateString();
+  }
+
+  // --- Draft Reply ---
+
+  openDraftReply(lead: Lead): void {
+    this.draftLead = lead;
+    this.draftText = '';
+    this.draftError = '';
+    this.draftLoading = true;
+    this.copied = false;
+    this.drafting[lead.id] = true;
+
+    this.leadsService.draftReply(lead.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.draftLoading = false;
+          this.drafting[lead.id] = false;
+          if (result.ok && result.reply) {
+            this.draftText = result.reply;
+          } else {
+            this.draftError = result.error || 'Failed to generate draft';
+          }
+        },
+        error: () => {
+          this.draftLoading = false;
+          this.drafting[lead.id] = false;
+          this.draftError = 'Network error generating draft';
+        }
+      });
+  }
+
+  closeDraft(): void {
+    this.draftLead = null;
+    this.draftText = '';
+    this.draftError = '';
+  }
+
+  copyDraft(): void {
+    if (!this.draftText) return;
+    navigator.clipboard.writeText(this.draftText);
+    this.copied = true;
+    setTimeout(() => this.copied = false, 2000);
+  }
+
+  copyAndMarkReplied(): void {
+    if (!this.draftText || !this.draftLead) return;
+    navigator.clipboard.writeText(this.draftText);
+    this.markStatus(this.draftLead, 'replied');
+    this.copied = true;
+    setTimeout(() => {
+      this.closeDraft();
+    }, 1000);
   }
 }

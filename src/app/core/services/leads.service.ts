@@ -41,6 +41,17 @@ export class LeadsService {
     return this.http.patch<Lead>(`${this.apiUrl}/${id}`, { status });
   }
 
+  draftReply(id: string, extraContext?: string): Observable<{ ok: boolean; reply?: string; reddit_url?: string; title?: string; error?: string }> {
+    return this.http.post<any>(`${this.apiUrl}/${id}/draft-reply`, {
+      extra_context: extraContext || ''
+    }).pipe(
+      catchError(error => {
+        console.error('LeadsService draftReply error:', error);
+        return of({ ok: false, error: error?.error?.error || error.message || 'Draft failed' });
+      })
+    );
+  }
+
   runScraper(): Observable<{ ok: boolean; message?: string; error?: string }> {
     return this.http.post<{ ok: boolean; message?: string; error?: string }>(
       this.scraperUrl, {}
