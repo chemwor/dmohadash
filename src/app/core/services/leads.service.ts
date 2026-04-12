@@ -41,6 +41,12 @@ export class LeadsService {
     return this.http.patch<Lead>(`${this.apiUrl}/${id}`, { status });
   }
 
+  getDailyStats(): Observable<{ replied_today: number; goal: number }> {
+    return this.http.get<{ replied_today: number; goal: number }>(`${this.apiUrl}/daily-stats`).pipe(
+      catchError(() => of({ replied_today: 0, goal: 10 }))
+    );
+  }
+
   draftReply(id: string, extraContext?: string): Observable<{ ok: boolean; reply?: string; reddit_url?: string; title?: string; error?: string }> {
     return this.http.post<any>(`${this.apiUrl}/${id}/draft-reply`, {
       extra_context: extraContext || ''

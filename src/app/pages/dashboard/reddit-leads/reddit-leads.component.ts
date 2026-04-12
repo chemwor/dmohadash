@@ -40,6 +40,28 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
         </button>
       </div>
 
+      <!-- Daily Progress -->
+      <div class="mb-4 bg-slate-800 rounded-lg p-3 border border-slate-700">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-xs text-slate-400">Today's Replies</span>
+          <span [class]="'text-sm font-bold ' + (repliedToday >= dailyGoal ? 'text-green-400' : 'text-slate-100')">
+            {{ repliedToday }}/{{ dailyGoal }}
+          </span>
+        </div>
+        <div class="w-full bg-slate-700 rounded-full h-2">
+          <div
+            class="h-2 rounded-full transition-all duration-500"
+            [class]="repliedToday >= dailyGoal ? 'bg-green-500' : 'bg-indigo-500'"
+            [style.width.%]="Math.min(100, (repliedToday / dailyGoal) * 100)"
+          ></div>
+        </div>
+        @if (repliedToday >= dailyGoal) {
+          <p class="text-[10px] text-green-400 mt-1">Goal hit. Nice work.</p>
+        } @else {
+          <p class="text-[10px] text-slate-500 mt-1">{{ dailyGoal - repliedToday }} more to go</p>
+        }
+      </div>
+
       <!-- Scraper feedback -->
       @if (scraperMessage) {
         <div [class]="'mb-4 p-3 rounded-lg text-sm ' + (scraperOk ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400')">
@@ -243,6 +265,11 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
 })
 export class RedditLeadsComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
+  Math = Math;
+
+  // Daily stats
+  repliedToday = 0;
+  dailyGoal = 10;
 
   // Draft reply state
   drafting: Record<string, boolean> = {};
@@ -274,6 +301,16 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loadLeads();
     this.loadNewCount();
+    this.loadDailyStats();
+  }
+
+  loadDailyStats(): void {
+    this.leadsService.getDailyStats()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(stats => {
+        this.repliedToday = stats.replied_today;
+        this.dailyGoal = stats.goal;
+      });
   }
 
   ngOnDestroy(): void {
@@ -322,6 +359,9 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
           }
           if (status === 'replied' || status === 'skipped') {
             this.newCount = Math.max(0, this.newCount - 1);
+          }
+          if (status === 'replied') {
+            this.repliedToday++;
           }
         }
       });

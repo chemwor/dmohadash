@@ -6,6 +6,7 @@ import { Subject, takeUntil, interval } from 'rxjs';
 import { LoadingSkeletonComponent } from '../../../shared/components/loading-skeleton/loading-skeleton.component';
 import { CommandCenterService } from '../../../core/services/command-center.service';
 import { ChecklistsService } from '../../../core/services/checklists.service';
+import { DailyGardenService, GardenTask } from '../../../core/services/daily-garden.service';
 import { CommandCenterData, ChecklistItem } from '../../../interfaces/dashboard.interfaces';
 
 @Component({
@@ -22,9 +23,21 @@ export class CommandCenterComponent implements OnInit, OnDestroy {
   error = '';
   lastUpdated: Date | null = null;
 
+  // Watering the Garden — daily growth tasks
+  gardenTasks: GardenTask[] = [
+    { key: 'reddit_replies', label: 'Reply to 5+ Reddit leads', description: 'Open Reddit Leads, draft replies, copy + paste to Reddit', link: '/dashboard/reddit-leads', completed: false },
+    { key: 'content_post', label: 'Post 1 piece of content', description: 'TikTok, Reel, or blog post from the content pipeline', link: '/dashboard/content', completed: false },
+    { key: 'check_ads', label: 'Check Google Ads performance', description: 'Review spend, CTR, conversions. Approve/reject any proposals.', link: '/dashboard/marketing', completed: false },
+    { key: 'social_engage', label: 'Engage on social media', description: 'Comment on 3 HOA-related posts on TikTok, IG, or Facebook', completed: false },
+    { key: 'check_funnel', label: 'Check the email funnel', description: 'Review email_funnel table for stalled leads. Run nudges if needed.', link: '/dashboard/test-pipeline', completed: false },
+    { key: 'review_leads', label: 'Review new Reddit leads', description: 'Run the scraper, mark irrelevant ones, prioritize high-score leads', link: '/dashboard/reddit-leads', completed: false },
+  ];
+  gardenCompleted = 0;
+
   constructor(
     private commandCenterService: CommandCenterService,
-    private checklistsService: ChecklistsService
+    private checklistsService: ChecklistsService,
+    private gardenService: DailyGardenService,
   ) {}
 
   ngOnInit(): void {
@@ -34,6 +47,29 @@ export class CommandCenterComponent implements OnInit, OnDestroy {
     interval(5 * 60 * 1000)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => this.loadData());
+
+    this.loadGarden();
+  }
+
+  loadGarden(): void {
+    this.gardenService.getCompletions()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(result => {
+        const completions = result.completions || {};
+        this.gardenTasks.forEach(t => {
+          t.completed = !!completions[t.key];
+        });
+        this.gardenCompleted = this.gardenTasks.filter(t => t.completed).length;
+      });
+  }
+
+  toggleGardenTask(task: GardenTask): void {
+    const newState = !task.completed;
+    task.completed = newState;
+    this.gardenCompleted = this.gardenTasks.filter(t => t.completed).length;
+    this.gardenService.toggle(task.key, newState)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe();
   }
 
   ngOnDestroy(): void {

@@ -27,6 +27,63 @@
 </header>
 
 <main class="px-4 sm:px-6 lg:px-8 py-4 md:py-6">
+  <!-- Watering the Garden — daily growth tasks -->
+  <div class="mb-6 card">
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center gap-2">
+        <h2 class="text-sm font-semibold text-slate-100">Watering the Garden</h2>
+        <span [class]="'text-xs font-bold px-2 py-0.5 rounded-full ' + (gardenCompleted === gardenTasks.length ? 'bg-green-500/20 text-green-400' : 'bg-slate-700 text-slate-400')">
+          {{ gardenCompleted }}/{{ gardenTasks.length }}
+        </span>
+      </div>
+      <p class="text-[10px] text-slate-500">Resets daily. Do these every day.</p>
+    </div>
+
+    <div class="w-full bg-slate-700 rounded-full h-1.5 mb-4">
+      <div
+        class="h-1.5 rounded-full transition-all duration-500"
+        [class]="gardenCompleted === gardenTasks.length ? 'bg-green-500' : 'bg-indigo-500'"
+        [style.width.%]="gardenTasks.length > 0 ? (gardenCompleted / gardenTasks.length) * 100 : 0"
+      ></div>
+    </div>
+
+    <div class="space-y-1.5">
+      @for (task of gardenTasks; track task.key) {
+        <div
+          (click)="toggleGardenTask(task)"
+          [class]="'flex items-start gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors ' + (task.completed ? 'bg-green-500/5 border border-green-500/20' : 'bg-slate-800 border border-slate-700 hover:bg-slate-700/50')"
+        >
+          <div [class]="'w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-colors ' + (task.completed ? 'bg-green-500 border-green-500' : 'border-slate-600')">
+            @if (task.completed) {
+              <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+              </svg>
+            }
+          </div>
+          <div class="flex-1 min-w-0">
+            <p [class]="'text-sm font-medium ' + (task.completed ? 'text-green-400 line-through opacity-70' : 'text-slate-100')">{{ task.label }}</p>
+            <p class="text-[11px] text-slate-500">{{ task.description }}</p>
+          </div>
+          @if (task.link) {
+            <a
+              [routerLink]="task.link"
+              (click)="$event.stopPropagation()"
+              class="text-[10px] text-indigo-400 hover:text-indigo-300 underline flex-shrink-0 mt-1"
+            >
+              Go
+            </a>
+          }
+        </div>
+      }
+    </div>
+
+    @if (gardenCompleted === gardenTasks.length) {
+      <div class="mt-3 pt-3 border-t border-green-500/20 text-center">
+        <p class="text-sm text-green-400 font-medium">Garden watered. Come back tomorrow.</p>
+      </div>
+    }
+  </div>
+
   <!-- Critical Alert Banner -->
   @if (data && data.alerts && data.alerts.critical > 0) {
     <div class="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl flex items-center justify-between">
