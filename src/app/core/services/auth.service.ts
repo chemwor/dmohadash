@@ -1,32 +1,65 @@
 import { Injectable } from '@angular/core';
+import { supabase } from '../supabase';
 
-const AUTH_KEY = 'dmhoa_authenticated';
-const DEFAULT_PASSWORD = 'kilimanjaro2026';
+// Only these email domains can log into the admin dashboard.
+const ALLOWED_DOMAINS = ['disputemyhoa.com', 'astrodigitallabs.com'];
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private readonly password: string;
+  private session: any = null;
+  private initialized = false;
 
-  constructor() {
-    // In production, this would be fetched from environment or a secure endpoint
-    this.password = DEFAULT_PASSWORD;
-  }
+  async init(): Promise<void> {
+    if (this.initialized) return;
+    this.initialized = true;
 
-  login(password: string): boolean {
-    if (password === this.password) {
-      sessionStorage.setItem(AUTH_KEY, 'true');
-      return true;
-    }
-    return false;
-  }
+    // Restore session from Supabase localStorage persistence
+    const { data } = await supabase.auth.getSession();
+    this.session = data.session;
 
-  logout(): void {
-    sessionStorage.removeItem(AUTH_KEY);
+    // Listen for auth state changes (login, logout, token refresh)
+    supabase.auth.onAuthStateChange((_event, session) => {
+      this.session = session;
+    });
   }
 
   isAuthenticated(): boolean {
-    return sessionStorage.getItem(AUTH_KEY) === 'true';
+    return !!this.session;
+  }
+
+  getEmail(): string {
+    return this.session?.user?.email || '';
+  }
+
+  isDomainAllowed(email: string): boolean {
+    if (!email || !email.includes('@')) return false;
+    const domain = email.split('@')[1].toLowerCase();
+    return ALLOWED_DOMAINS.includes(domain);
+  }
+
+  async sendMagicLink(email: string): Promise<{ ok: boolean; error?: string }> {
+    if (!this.isDomainAllowed(email)) {
+      return { ok: false, error: 'Email domain not authorized. Use a @disputemyhoa.com or @astrodigitallabs.com address.' };
+    }
+
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: window.location.origin + '/dashboard',
+      },
+    });
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    return { ok: true };
+  }
+
+  async logout(): Promise<void> {
+    await supabase.auth.signOut();
+    this.session = null;
   }
 }
