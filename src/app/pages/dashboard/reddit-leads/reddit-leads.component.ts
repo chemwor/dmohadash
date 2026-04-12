@@ -159,8 +159,18 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
         <div class="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" (click)="$event.stopPropagation()">
           <div class="flex items-center justify-between p-5 border-b border-slate-700">
             <div class="flex-1 min-w-0 mr-4">
-              <h3 class="text-lg font-semibold text-slate-100">Draft Reply</h3>
-              <p class="text-xs text-slate-400 mt-0.5 truncate">r/{{ draftLead.subreddit }} : {{ draftLead.title }}</p>
+              <div class="flex items-center gap-2 mb-0.5">
+                <h3 class="text-lg font-semibold text-slate-100">Draft Reply</h3>
+                @if (draftCategory === 'promo_ok') {
+                  <span class="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full text-[10px] font-medium uppercase tracking-wider">Promo OK</span>
+                } @else if (draftCategory === 'helpful_only') {
+                  <span class="px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded-full text-[10px] font-medium uppercase tracking-wider">Helpful Only</span>
+                }
+              </div>
+              <p class="text-xs text-slate-400 truncate">r/{{ draftLead.subreddit }} : {{ draftLead.title }}</p>
+              @if (draftCategory === 'helpful_only') {
+                <p class="text-[10px] text-amber-400/70 mt-1">No product mention. This person already has legal help or the topic isn't a fit for DMHOA.</p>
+              }
             </div>
             <button (click)="closeDraft()" class="text-slate-500 hover:text-slate-300 text-2xl leading-none">&times;</button>
           </div>
@@ -238,6 +248,7 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
   drafting: Record<string, boolean> = {};
   draftLead: Lead | null = null;
   draftText = '';
+  draftCategory = '';
   draftLoading = false;
   draftError = '';
   copied = false;
@@ -374,6 +385,7 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
   openDraftReply(lead: Lead): void {
     this.draftLead = lead;
     this.draftText = '';
+    this.draftCategory = '';
     this.draftError = '';
     this.draftLoading = true;
     this.copied = false;
@@ -382,11 +394,12 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
     this.leadsService.draftReply(lead.id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (result) => {
+        next: (result: any) => {
           this.draftLoading = false;
           this.drafting[lead.id] = false;
           if (result.ok && result.reply) {
             this.draftText = result.reply;
+            this.draftCategory = result.category || 'unknown';
           } else {
             this.draftError = result.error || 'Failed to generate draft';
           }
