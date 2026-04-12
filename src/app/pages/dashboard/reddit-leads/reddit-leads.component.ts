@@ -20,24 +20,41 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
             </span>
           }
         </div>
-        <button
-          (click)="runScraper()"
-          [disabled]="scraperRunning"
-          class="btn-primary text-sm flex items-center gap-2"
-        >
-          @if (scraperRunning) {
-            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Scanning...
-          } @else {
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-            </svg>
-            Run Scraper
-          }
-        </button>
+        <div class="flex gap-2">
+          <button
+            (click)="checkForReplies()"
+            [disabled]="checkingReplies"
+            class="btn-secondary text-sm flex items-center gap-2"
+          >
+            @if (checkingReplies) {
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              Checking...
+            } @else {
+              Check Replies
+              @if (incomingReplies.length > 0) {
+                <span class="bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">{{ incomingReplies.length }}</span>
+              }
+            }
+          </button>
+          <button
+            (click)="runScraper()"
+            [disabled]="scraperRunning"
+            class="btn-primary text-sm flex items-center gap-2"
+          >
+            @if (scraperRunning) {
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Scanning...
+            } @else {
+              Run Scraper
+            }
+          </button>
+        </div>
       </div>
 
       <!-- Daily Progress -->
@@ -61,6 +78,49 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
           <p class="text-[10px] text-slate-500 mt-1">{{ dailyGoal - repliedToday }} more to go</p>
         }
       </div>
+
+      <!-- Incoming Replies -->
+      @if (incomingReplies.length > 0) {
+        <div class="mb-4">
+          <div class="flex items-center gap-2 mb-2">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-red-400">Replies to You</h3>
+            <span class="bg-red-500/20 text-red-400 rounded-full px-2 py-0.5 text-[10px] font-bold">{{ incomingReplies.length }}</span>
+          </div>
+          <div class="space-y-2">
+            @for (reply of incomingReplies; track reply.reply_id) {
+              <div class="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1 flex-wrap">
+                      <span class="text-xs font-medium text-red-400">u/{{ reply.reply_author }}</span>
+                      <span class="text-[10px] text-slate-500">replied {{ replyTimeAgo(reply.reply_created_utc) }}</span>
+                      <span class="text-[10px] text-slate-600">on r/{{ reply.subreddit }}</span>
+                    </div>
+                    <p class="text-sm text-slate-200 mb-1">{{ reply.reply_body.length > 200 ? reply.reply_body.substring(0, 200) + '...' : reply.reply_body }}</p>
+                    <p class="text-[10px] text-slate-500 truncate">Thread: {{ reply.lead_title }}</p>
+                  </div>
+                  <div class="flex flex-col gap-1.5 flex-shrink-0">
+                    <button
+                      (click)="openFollowUp(reply)"
+                      class="px-2.5 py-1 text-[11px] bg-indigo-500/20 text-indigo-400 rounded hover:bg-indigo-500/30"
+                    >
+                      Draft Follow-Up
+                    </button>
+                    <a
+                      [href]="reply.reddit_url"
+                      target="_blank"
+                      rel="noopener"
+                      class="px-2.5 py-1 text-[11px] bg-slate-700 text-slate-300 rounded hover:bg-slate-600 text-center"
+                    >
+                      View Thread
+                    </a>
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+      }
 
       <!-- Scraper feedback -->
       @if (scraperMessage) {
@@ -253,6 +313,72 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
         </div>
       </div>
     }
+
+    <!-- Follow-Up Modal -->
+    @if (followUpReply) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" (click)="closeFollowUp()">
+        <div class="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" (click)="$event.stopPropagation()">
+          <div class="flex items-center justify-between p-5 border-b border-slate-700">
+            <div class="flex-1 min-w-0 mr-4">
+              <h3 class="text-lg font-semibold text-slate-100">Draft Follow-Up</h3>
+              <p class="text-xs text-slate-400 mt-0.5">Replying to u/{{ followUpReply.reply_author }}</p>
+            </div>
+            <button (click)="closeFollowUp()" class="text-slate-500 hover:text-slate-300 text-2xl leading-none">&times;</button>
+          </div>
+
+          <div class="flex-1 overflow-y-auto p-5 space-y-4">
+            <div class="bg-slate-800 rounded-lg p-3 border border-slate-700">
+              <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Their reply</p>
+              <p class="text-sm text-slate-200">{{ followUpReply.reply_body }}</p>
+            </div>
+
+            @if (followUpLoading) {
+              <div class="flex items-center gap-3 text-slate-400 py-6 justify-center">
+                <svg class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="text-sm">Drafting follow-up...</span>
+              </div>
+            } @else if (followUpText) {
+              <textarea
+                [(ngModel)]="followUpText"
+                class="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                rows="8"
+              ></textarea>
+              <p class="text-[10px] text-slate-500">No product mention this time. Just be helpful.</p>
+            }
+          </div>
+
+          <div class="flex items-center justify-between gap-2 p-5 border-t border-slate-700">
+            <a
+              [href]="followUpReply.reddit_url"
+              target="_blank"
+              rel="noopener"
+              class="text-xs text-indigo-400 hover:text-indigo-300 underline"
+            >
+              Open thread
+            </a>
+            <div class="flex gap-2">
+              @if (followUpText && !followUpLoading) {
+                <button
+                  (click)="copyFollowUp()"
+                  class="px-4 py-2 text-sm bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 font-medium"
+                >
+                  {{ followUpCopied ? 'Copied!' : 'Copy to Clipboard' }}
+                </button>
+              }
+              <button
+                (click)="closeFollowUp()"
+                class="px-4 py-2 text-sm bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: [`
     .line-clamp-2 {
@@ -270,6 +396,17 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
   // Daily stats
   repliedToday = 0;
   dailyGoal = 10;
+
+  // Reply tracking
+  incomingReplies: any[] = [];
+  checkingReplies = false;
+  repliesChecked = false;
+
+  // Follow-up drafting
+  followUpReply: any = null;
+  followUpText = '';
+  followUpLoading = false;
+  followUpCopied = false;
 
   // Draft reply state
   drafting: Record<string, boolean> = {};
@@ -302,6 +439,7 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
     this.loadLeads();
     this.loadNewCount();
     this.loadDailyStats();
+    this.checkForReplies();
   }
 
   loadDailyStats(): void {
@@ -418,6 +556,67 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
     const diffDays = Math.floor(diffHr / 24);
     if (diffDays < 30) return `${diffDays}d ago`;
     return date.toLocaleDateString();
+  }
+
+  // --- Reply Tracking ---
+
+  checkForReplies(): void {
+    this.checkingReplies = true;
+    this.leadsService.checkReplies()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result: any) => {
+          this.checkingReplies = false;
+          this.repliesChecked = true;
+          this.incomingReplies = result.replies || [];
+        },
+        error: () => {
+          this.checkingReplies = false;
+          this.repliesChecked = true;
+        }
+      });
+  }
+
+  openFollowUp(reply: any): void {
+    this.followUpReply = reply;
+    this.followUpText = '';
+    this.followUpLoading = true;
+    this.followUpCopied = false;
+
+    this.leadsService.draftFollowUp(reply.lead_id, reply.reply_body, reply.lead_title)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.followUpLoading = false;
+          if (result.ok && result.reply) {
+            this.followUpText = result.reply;
+          }
+        },
+        error: () => { this.followUpLoading = false; }
+      });
+  }
+
+  closeFollowUp(): void {
+    this.followUpReply = null;
+    this.followUpText = '';
+  }
+
+  copyFollowUp(): void {
+    if (!this.followUpText) return;
+    navigator.clipboard.writeText(this.followUpText);
+    this.followUpCopied = true;
+    setTimeout(() => this.followUpCopied = false, 2000);
+  }
+
+  replyTimeAgo(utc: number): string {
+    if (!utc) return '';
+    const diffMs = Date.now() - (utc * 1000);
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return 'just now';
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h ago`;
+    return `${Math.floor(diffHr / 24)}d ago`;
   }
 
   // --- Draft Reply ---

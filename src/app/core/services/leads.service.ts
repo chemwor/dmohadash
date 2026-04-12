@@ -41,6 +41,21 @@ export class LeadsService {
     return this.http.patch<Lead>(`${this.apiUrl}/${id}`, { status });
   }
 
+  checkReplies(): Observable<{ ok: boolean; threads_checked?: number; replies?: any[]; errors?: string[] }> {
+    return this.http.post<any>(`${this.apiUrl}/check-replies`, {}).pipe(
+      catchError(err => of({ ok: false, replies: [], error: err.message }))
+    );
+  }
+
+  draftFollowUp(leadId: string, theirReply: string, threadContext?: string): Observable<{ ok: boolean; reply?: string; error?: string }> {
+    return this.http.post<any>(`${this.apiUrl}/${leadId}/draft-follow-up`, {
+      their_reply: theirReply,
+      thread_context: threadContext || '',
+    }).pipe(
+      catchError(err => of({ ok: false, error: err?.error?.error || err.message }))
+    );
+  }
+
   getDailyStats(): Observable<{ replied_today: number; goal: number }> {
     return this.http.get<{ replied_today: number; goal: number }>(`${this.apiUrl}/daily-stats`).pipe(
       catchError(() => of({ replied_today: 0, goal: 10 }))
