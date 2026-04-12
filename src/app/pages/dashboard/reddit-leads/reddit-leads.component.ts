@@ -142,7 +142,7 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
                       (click)="markStatus(lead, 'skipped')"
                       class="px-3 py-1.5 bg-slate-700 text-slate-400 rounded-lg text-xs font-medium hover:bg-slate-600 transition-colors"
                     >
-                      Skip
+                      Not Relevant
                     </button>
                   }
                 </div>
@@ -257,7 +257,7 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
     { key: 'all', label: 'All' },
     { key: 'new', label: 'New' },
     { key: 'replied', label: 'Replied' },
-    { key: 'skipped', label: 'Skipped' },
+    { key: 'skipped', label: 'Not Relevant' },
   ];
 
   activeTab = 'new';
