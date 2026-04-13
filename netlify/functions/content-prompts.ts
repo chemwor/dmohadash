@@ -245,28 +245,45 @@ export const handler: Handler = async (event) => {
 
     const systemPrompt = buildSystemPrompt(idea.type, idea);
 
-    const response = await fetch(ANTHROPIC_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        system: systemPrompt + HUMAN_VOICE_RULES,
-        messages: [{ role: 'user', content: 'Generate the script and Kling prompts now. Return JSON only.' }],
-      }),
-    });
+    // Call Claude with retry on 529/503/overloaded
+    let claudeResponse: any = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const response = await fetch(ANTHROPIC_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': ANTHROPIC_API_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 4096,
+          system: systemPrompt + HUMAN_VOICE_RULES,
+          messages: [{ role: 'user', content: 'Generate the script and Kling prompts now. Return JSON only.' }],
+        }),
+      });
 
-    if (!response.ok) {
+      if (response.ok) {
+        claudeResponse = await response.json();
+        break;
+      }
+
+      if ([429, 503, 529].includes(response.status) && attempt < 2) {
+        const delay = (attempt + 1) * 3000;
+        console.warn(`Claude API ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/3)`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+
       const error = await response.text();
       throw new Error(`Claude API error: ${response.status} - ${error}`);
     }
 
-    const data = await response.json();
-    const raw = data.content[0].text;
+    if (!claudeResponse) {
+      throw new Error('Claude API failed after 3 attempts');
+    }
+
+    const raw = claudeResponse.content[0].text;
     const text = raw.replace(/```(?:json)?\s*/g, '').replace(/```\s*/g, '').trim();
     const parsed = JSON.parse(text);
 

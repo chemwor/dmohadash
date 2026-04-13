@@ -29,7 +29,7 @@
   timeout = 120
 
 [functions."content-ideas"]
-  timeout = 30
+  timeout = 60
 
 [functions."content-prompts"]
   timeout = 60
