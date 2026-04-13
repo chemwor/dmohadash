@@ -10,11 +10,11 @@ export interface ShotPromptData {
   duration?: number;
   duration_seconds?: number;
   kling_prompt: string;
-  elevenlabs_direction?: {
+  kling_tts?: {
     voice_type: string;
-    stability: number;
-    expressiveness: number;
-    delivery_notes: string;
+    speed: string;
+    emotion: string;
+    notes: string;
   };
 }
 
@@ -47,26 +47,26 @@ export interface ShotPromptData {
         <p class="text-sm text-slate-200 italic">"{{ getDialogue() }}"</p>
       </div>
 
-      <!-- ElevenLabs Direction -->
-      @if (shot.elevenlabs_direction) {
-        <div class="mb-3 bg-purple-500/5 border border-purple-500/20 rounded-lg p-3">
-          <p class="text-[10px] uppercase tracking-wider text-purple-400 mb-2">ElevenLabs Voice Direction</p>
+      <!-- Kling TTS Direction -->
+      @if (shot.kling_tts) {
+        <div class="mb-3 bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
+          <p class="text-[10px] uppercase tracking-wider text-blue-400 mb-2">Kling TTS</p>
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
             <div>
               <p class="text-slate-500">Voice</p>
-              <p class="text-slate-300">{{ shot.elevenlabs_direction.voice_type }}</p>
+              <p class="text-slate-300">{{ shot.kling_tts.voice_type }}</p>
             </div>
             <div>
-              <p class="text-slate-500">Stability</p>
-              <p class="text-slate-300">{{ shot.elevenlabs_direction.stability }}%</p>
+              <p class="text-slate-500">Speed</p>
+              <p class="text-slate-300">{{ shot.kling_tts.speed }}</p>
             </div>
             <div>
-              <p class="text-slate-500">Expressiveness</p>
-              <p class="text-slate-300">{{ shot.elevenlabs_direction.expressiveness }}%</p>
+              <p class="text-slate-500">Emotion</p>
+              <p class="text-slate-300">{{ shot.kling_tts.emotion }}</p>
             </div>
             <div>
-              <p class="text-slate-500">Delivery</p>
-              <p class="text-slate-300">{{ shot.elevenlabs_direction.delivery_notes }}</p>
+              <p class="text-slate-500">Note</p>
+              <p class="text-slate-300">{{ shot.kling_tts.notes }}</p>
             </div>
           </div>
         </div>

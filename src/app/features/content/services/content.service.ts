@@ -12,11 +12,11 @@ export interface VideoIdea {
   created_at: string;
 }
 
-export interface ElevenLabsDirection {
+export interface KlingTts {
   voice_type: string;
-  stability: number;
-  expressiveness: number;
-  delivery_notes: string;
+  speed: string;
+  emotion: string;
+  notes: string;
 }
 
 export interface ShotPrompt {
@@ -27,7 +27,7 @@ export interface ShotPrompt {
   duration?: number;
   duration_seconds?: number;
   kling_prompt: string;
-  elevenlabs_direction?: ElevenLabsDirection;
+  kling_tts?: KlingTts;
 }
 
 export interface VideoPrompt {

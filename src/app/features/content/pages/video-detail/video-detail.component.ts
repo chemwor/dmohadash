@@ -89,6 +89,13 @@ import { CopyEditorComponent } from '../../components/copy-editor/copy-editor.co
 
           <!-- STEP 2: SCRIPT + KLING PROMPTS -->
           <div [class]="'card ' + (isUnlocked('prompt_ready') ? '' : 'opacity-50 pointer-events-none')">
+            <!-- Kling workflow banner -->
+            @if (isUnlocked('prompt_ready')) {
+              <div class="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg text-xs text-blue-300">
+                <span class="font-medium">Kling Workflow:</span> Generate video with prompt below, then open Lip Sync, paste dialogue into Text to Speech, match voice settings shown, export, and assemble in CapCut.
+              </div>
+            }
+
             <div class="flex items-center justify-between mb-3">
               <h2 class="section-header flex items-center gap-2 mb-0">
                 <span [class]="'w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ' + (isUnlocked('prompt_ready') ? 'bg-green-500/20 text-green-400' : 'bg-slate-700 text-slate-500')">2</span>

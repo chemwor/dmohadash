@@ -36,11 +36,11 @@ const KLING_TEMPLATES: Record<string, any> = {
         character: 'Board President',
         duration_seconds: 10,
         template: `VERTICAL 9:16, 1080p, raw documentary footage, handheld camera, cinema verite style, single static 10 second take, small HOA meeting room, drop ceiling fluorescent lights, beige cinder block walls, folding table wrinkled plastic tablecloth styrofoam cups hand-written nameplate reading BOARD OF DIRECTORS taped to front of table, whiteboard behind reading HOA BOARD MEETING - AGENDA in marker, American flag back right corner, analog wall clock showing 7pm, CHARACTER: White male board president 60s receding grey hair reading glasses short sleeve button down shirt, seated behind table, looking directly into camera, completely expressionless flat monotone delivery, only character visible in frame, mouth moving in perfect sync with speech, back of head of resident slightly out of focus in bottom left foreground, audience POV low angle, subtle continuous handheld camera shake throughout, grainy texture, harsh fluorescent lighting, no color grading, no watermarks, no text overlays, authentic candid feel, single uncut take.\nCharacter says: [DIALOGUE]`,
-        elevenlabs: {
-          voice_type: 'Older male, 60s, deep, authoritative',
-          stability: 95,
-          expressiveness: 10,
-          delivery_notes: 'Completely dead inside. Reads $XX,XXX fine like a grocery list. Zero emotional range.',
+        kling_tts: {
+          voice_type: 'Older male, deep, authoritative',
+          speed: '0.9x',
+          emotion: 'neutral',
+          notes: 'Flat monotone throughout. Do not vary tone regardless of content.',
         },
       },
       {
@@ -48,11 +48,11 @@ const KLING_TEMPLATES: Record<string, any> = {
         character: 'Homeowner',
         duration_seconds: 5,
         template: `VERTICAL 9:16, 1080p, raw documentary footage, handheld camera, cinema verite style, single static 5 second take, same HOA meeting room, drop ceiling fluorescent lights, beige cinder block walls, metal folding chairs visible in background, other residents partially visible blurred behind, CHARACTER: [HOMEOWNER_DESC] seated in metal folding chair facing camera, only character visible in frame, expression of pure disbelief shifting to outrage, eyes wide, mouth open, shaking head, mouth moving in perfect sync with speech, eye level camera angle, significant handheld camera shake as if person filming jolted toward them, grainy texture, harsh fluorescent lighting, no color grading, no watermarks, no text overlays, authentic candid feel, single uncut take.\nCharacter says: [DIALOGUE]`,
-        elevenlabs: {
-          voice_type: 'Varies per video. Match demographic description.',
-          stability: 30,
-          expressiveness: 95,
-          delivery_notes: 'Full disbelief cracking into outrage. Peak expressiveness on the capitalized word.',
+        kling_tts: {
+          voice_type: 'Varies. Match homeowner demographic.',
+          speed: '1.1x',
+          emotion: 'shocked',
+          notes: 'Peaks on the capitalized word. Full disbelief.',
         },
       },
     ],
@@ -64,11 +64,11 @@ const KLING_TEMPLATES: Record<string, any> = {
         character: 'HOA Representative',
         duration_seconds: 15,
         template: `VERTICAL 9:16, 1080p, Ring doorbell camera POV footage, wide angle fisheye lens distortion, full color [TIME_OF_DAY] footage, timestamp watermark in top left corner reading [TIMESTAMP], motion detection banner across top reading FRONT DOOR - MOTION DETECTED, static camera mounted high looking down at front [LOCATION] at slight downward angle, SETTING: [LOCATION_DESC], CHARACTER: White male HOA representative 40s khaki pants polo shirt with HOA logo, [PROP], completely serious expression, treating [SUBJECT] like a crime scene, SCENE PLAYS OUT AS FOLLOWS: [ACTION_SEQUENCE], subtle camera grain throughout, slight fisheye distortion on edges, timestamp and motion banner persistent throughout entire clip, natural color, authentic Ring doorbell footage feel, single uncut 15 second take, no color grading, no additional watermarks, no text overlays`,
-        elevenlabs: {
-          voice_type: 'Male, 40s, clinical, self-important',
-          stability: 90,
-          expressiveness: 15,
-          delivery_notes: 'Documentary narration style. Treats mundane objects like crime scene evidence.',
+        kling_tts: {
+          voice_type: 'Male, mid-40s, clinical',
+          speed: '0.9x',
+          emotion: 'serious',
+          notes: 'Documentary narration. Slow and deliberate.',
         },
       },
     ],
@@ -80,11 +80,11 @@ const KLING_TEMPLATES: Record<string, any> = {
         character: 'News Anchor',
         duration_seconds: 15,
         template: `VERTICAL 9:16, 1080p, raw documentary footage, single static 15 second take, fake local news broadcast, professional studio lighting, shallow depth of field, SETTING: Local news studio, dark blue and grey background with out of focus city skyline graphic behind anchor, [STATION_NAME] logo visible in background, bottom of screen has red breaking news chyron banner reading BREAKING: [HEADLINE], scrolling news ticker along very bottom reading [TICKER_TEXT], top right corner bug logo reading [STATION_NAME], CHARACTER: Female news anchor late 30s, professional blazer, hair styled, light makeup, seated at news desk, looking directly into camera with completely serious expression, only character visible in frame, mouth moving in perfect sync with speech, SCENE PLAYS OUT AS FOLLOWS: [DIALOGUE], professional broadcast camera quality, studio lighting, no camera shake, crisp and clean, chyron and ticker persistent throughout, no color grading, no additional watermarks, single uncut 15 second take`,
-        elevenlabs: {
-          voice_type: 'Female, late 30s, professional broadcaster',
-          stability: 85,
-          expressiveness: 20,
-          delivery_notes: 'Completely straight delivery. The flatness against the absurd content is the joke.',
+        kling_tts: {
+          voice_type: 'Female, professional broadcaster',
+          speed: '1.0x',
+          emotion: 'neutral',
+          notes: 'Straight broadcast delivery. No emotional variation.',
         },
       },
     ],
@@ -127,7 +127,7 @@ Return this exact JSON:
       "dialogue": "the exact words they say",
       "duration_seconds": 10,
       "kling_prompt": "the complete Kling prompt with [DIALOGUE] replaced by the actual dialogue",
-      "elevenlabs_direction": { "voice_type": "Older male, 60s, deep, authoritative", "stability": 95, "expressiveness": 10, "delivery_notes": "Completely dead inside. Reads fine like a grocery list. Zero emotional range." }
+      "kling_tts": { "voice_type": "Older male, deep, authoritative", "speed": "0.9x", "emotion": "neutral", "notes": "Flat monotone throughout. Do not vary tone regardless of content." }
     },
     {
       "shot_number": 2,
@@ -135,7 +135,7 @@ Return this exact JSON:
       "dialogue": "their shocked reaction line",
       "duration_seconds": 5,
       "kling_prompt": "the complete Kling prompt with [HOMEOWNER_DESC] and [DIALOGUE] filled in",
-      "elevenlabs_direction": { "voice_type": "match the demographic description you chose", "stability": 30, "expressiveness": 95, "delivery_notes": "Full disbelief cracking into outrage. Peak expressiveness on the capitalized word." }
+      "kling_tts": { "voice_type": "match the demographic description you chose", "speed": "1.1x", "emotion": "shocked", "notes": "Peaks on the capitalized word. Full disbelief." }
     }
   ]
 }`;
@@ -161,7 +161,7 @@ Return this exact JSON:
       "dialogue": "the full narration",
       "duration_seconds": 15,
       "kling_prompt": "the complete Kling prompt with ALL placeholders filled in",
-      "elevenlabs_direction": { "voice_type": "Male, 40s, clinical, self-important", "stability": 90, "expressiveness": 15, "delivery_notes": "Documentary narration style. Treats mundane objects like crime scene evidence." }
+      "kling_tts": { "voice_type": "Male, mid-40s, clinical", "speed": "0.9x", "emotion": "serious", "notes": "Documentary narration. Slow and deliberate." }
     }
   ]
 }`;
@@ -190,7 +190,7 @@ Return this exact JSON:
       "dialogue": "the full anchor script",
       "duration_seconds": 15,
       "kling_prompt": "the complete Kling prompt with ALL placeholders filled in",
-      "elevenlabs_direction": { "voice_type": "Female, late 30s, professional broadcaster", "stability": 85, "expressiveness": 20, "delivery_notes": "Completely straight delivery. The flatness against the absurd content is the joke." }
+      "kling_tts": { "voice_type": "Female, professional broadcaster", "speed": "1.0x", "emotion": "neutral", "notes": "Straight broadcast delivery. No emotional variation." }
     }
   ]
 }`;
