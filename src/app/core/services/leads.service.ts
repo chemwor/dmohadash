@@ -9,6 +9,8 @@ export interface Lead {
   title: string;
   url: string;
   score: number;
+  upvotes: number;
+  num_comments: number;
   status: string;
   replied_at: string | null;
   created_utc: string;

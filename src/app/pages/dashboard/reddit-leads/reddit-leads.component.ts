@@ -182,6 +182,12 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
                     <span [class]="'px-2 py-0.5 rounded text-[11px] font-bold ' + scoreBadgeClass(lead.score)">
                       {{ lead.score }}
                     </span>
+                    @if (lead.upvotes) {
+                      <span class="text-[11px] text-slate-500" title="Upvotes">{{ lead.upvotes }} pts</span>
+                    }
+                    @if (lead.num_comments) {
+                      <span class="text-[11px] text-slate-500" title="Comments">{{ lead.num_comments }} comments</span>
+                    }
                     @if (lead.status !== 'new') {
                       <span [class]="'px-2 py-0.5 rounded text-[11px] font-medium ' + statusBadgeClass(lead.status)">
                         {{ lead.status }}
