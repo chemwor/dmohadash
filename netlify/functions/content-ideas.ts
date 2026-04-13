@@ -1,7 +1,15 @@
 import { Handler } from '@netlify/functions';
+import { createClient } from '@supabase/supabase-js';
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+
+function getSupabaseClient() {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  return createClient(url, key);
+}
 
 const HUMAN_VOICE_RULES = `
 
@@ -96,9 +104,52 @@ export const handler: Handler = async (event) => {
     const typeDesc = TYPE_DESCRIPTIONS[type] || type;
     const seedText = seed ? `\n\nUser wants ideas inspired by: "${seed}"` : '';
 
-    const userPrompt = `Generate exactly 4 video scenario ideas for this type: ${typeDesc}.${seedText}
+    // Fetch existing scenarios from Supabase to avoid duplicates
+    let usedScenariosText = '';
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        const { data: existingIdeas } = await supabase
+          .from('video_ideas')
+          .select('scenario, violation_type')
+          .order('created_at', { ascending: false })
+          .limit(50);
 
-Each idea must have a fine between $8,000 and $25,000. Return exactly 4 ideas in the JSON format specified.`;
+        if (existingIdeas && existingIdeas.length > 0) {
+          const usedList = existingIdeas
+            .map((i: any) => `- ${i.scenario} (${i.violation_type})`)
+            .join('\n');
+          usedScenariosText = `\n\nALREADY USED SCENARIOS (do NOT repeat any of these topics or similar variations):\n${usedList}\n\nGenerate completely different scenarios from the above.`;
+        }
+      } catch (e) {
+        // Non-fatal: proceed without duplicate check
+        console.warn('Could not fetch existing scenarios:', e);
+      }
+    }
+
+    // Also fetch titles of videos already posted on YouTube for awareness
+    let postedVideosText = '';
+    try {
+      const ytResp = await fetch(
+        'https://www.youtube.com/feeds/videos.xml?channel_id=UCB2_1EyFakAwhXvtvkbl19g',
+        { headers: { 'User-Agent': 'DMHOA-ContentPipeline/1.0' } }
+      );
+      if (ytResp.ok) {
+        const xml = await ytResp.text();
+        const titles = [...xml.matchAll(/<title>([^<]+)<\/title>/g)]
+          .map(m => m[1])
+          .filter(t => t !== 'DisputeMyHOA' && !t.includes('YouTube'));
+        if (titles.length > 0) {
+          postedVideosText = `\n\nVIDEOS ALREADY POSTED ON YOUTUBE (avoid these exact topics):\n${titles.map(t => `- ${t}`).join('\n')}`;
+        }
+      }
+    } catch (e) {
+      // Non-fatal
+    }
+
+    const userPrompt = `Generate exactly 4 video scenario ideas for this type: ${typeDesc}.${seedText}${usedScenariosText}${postedVideosText}
+
+Each idea must have a fine between $8,000 and $25,000. Return exactly 4 ideas in the JSON format specified. Make sure every idea is DIFFERENT from the already-used scenarios listed above.`;
 
     const response = await fetch(ANTHROPIC_API_URL, {
       method: 'POST',

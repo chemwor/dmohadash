@@ -77,6 +77,27 @@ import { IdeaCardComponent } from '../../components/idea-card/idea-card.componen
           }
         </div>
       }
+
+      <!-- Posted on YouTube -->
+      @if (youtubeVideos.length > 0) {
+        <div class="mt-8">
+          <h2 class="section-header">Posted on YouTube ({{ youtubeVideos.length }} videos)</h2>
+          <div class="space-y-2">
+            @for (v of youtubeVideos; track v.id) {
+              <div class="bg-slate-800 border border-slate-700 rounded-lg p-3 flex items-center justify-between gap-3">
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm text-slate-100 truncate">{{ v.title }}</p>
+                  <div class="flex items-center gap-3 text-[11px] text-slate-500 mt-1">
+                    <span>{{ v.views | number }} views</span>
+                    <span>{{ v.published }}</span>
+                  </div>
+                </div>
+                <a [href]="v.url" target="_blank" rel="noopener" class="text-[11px] text-indigo-400 hover:text-indigo-300 underline flex-shrink-0">Watch</a>
+              </div>
+            }
+          </div>
+        </div>
+      }
     </div>
   `
 })
@@ -95,6 +116,9 @@ export class ContentDashboardComponent implements OnInit, OnDestroy {
   loading = true;
   tabCounts: Record<string, number> = {};
 
+  // YouTube posted videos
+  youtubeVideos: { id: string; title: string; views: number; published: string; url: string }[] = [];
+
   constructor(
     private contentService: ContentService,
     private router: Router
@@ -102,6 +126,32 @@ export class ContentDashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadIdeas();
+    this.loadYouTubeVideos();
+  }
+
+  async loadYouTubeVideos(): Promise<void> {
+    try {
+      const resp = await fetch('https://www.youtube.com/feeds/videos.xml?channel_id=UCB2_1EyFakAwhXvtvkbl19g');
+      if (!resp.ok) return;
+      const xml = await resp.text();
+
+      const entries = xml.match(/<entry>[\s\S]*?<\/entry>/g) || [];
+      this.youtubeVideos = entries.map(entry => {
+        const title = (entry.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '';
+        const id = (entry.match(/<yt:videoId>([\s\S]*?)<\/yt:videoId>/) || [])[1] || '';
+        const views = parseInt((entry.match(/views="(\d+)"/) || [])[1] || '0', 10);
+        const published = (entry.match(/<published>([\s\S]*?)<\/published>/) || [])[1]?.substring(0, 10) || '';
+        return {
+          id,
+          title,
+          views,
+          published,
+          url: `https://www.youtube.com/watch?v=${id}`,
+        };
+      }).sort((a, b) => b.views - a.views);
+    } catch (e) {
+      // Non-fatal
+    }
   }
 
   ngOnDestroy(): void {
