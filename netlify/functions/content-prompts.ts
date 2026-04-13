@@ -245,42 +245,58 @@ export const handler: Handler = async (event) => {
 
     const systemPrompt = buildSystemPrompt(idea.type, idea);
 
-    // Call Claude with retry on 529/503/overloaded
+    // Call Claude with retry + model fallback on persistent overload
+    const MODELS = ['claude-sonnet-4-20250514', 'claude-sonnet-4-5-20250929', 'claude-haiku-4-5-20251001'];
     let claudeResponse: any = null;
-    for (let attempt = 0; attempt < 3; attempt++) {
-      const response = await fetch(ANTHROPIC_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': ANTHROPIC_API_KEY,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 4096,
-          system: systemPrompt + HUMAN_VOICE_RULES,
-          messages: [{ role: 'user', content: 'Generate the script and Kling prompts now. Return JSON only.' }],
-        }),
-      });
 
-      if (response.ok) {
-        claudeResponse = await response.json();
-        break;
+    for (const model of MODELS) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const response = await fetch(ANTHROPIC_API_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': ANTHROPIC_API_KEY,
+              'anthropic-version': '2023-06-01',
+            },
+            body: JSON.stringify({
+              model,
+              max_tokens: 4096,
+              system: systemPrompt + HUMAN_VOICE_RULES,
+              messages: [{ role: 'user', content: 'Generate the script and Kling prompts now. Return JSON only.' }],
+            }),
+          });
+
+          if (response.ok) {
+            claudeResponse = await response.json();
+            console.log(`Content prompts: succeeded with model ${model} on attempt ${attempt + 1}`);
+            break;
+          }
+
+          if ([429, 503, 529].includes(response.status)) {
+            console.warn(`Claude ${model}: ${response.status}, ${attempt < 1 ? 'retrying...' : 'trying next model'}`);
+            if (attempt < 1) {
+              await new Promise(r => setTimeout(r, 3000));
+              continue;
+            }
+            break;
+          }
+
+          const error = await response.text();
+          throw new Error(`Claude API error: ${response.status} - ${error}`);
+        } catch (e: any) {
+          if (e.message?.includes('Claude API error')) throw e;
+          console.warn(`Claude ${model} attempt ${attempt + 1} exception: ${e.message}`);
+          if (attempt < 1) {
+            await new Promise(r => setTimeout(r, 2000));
+          }
+        }
       }
-
-      if ([429, 503, 529].includes(response.status) && attempt < 2) {
-        const delay = (attempt + 1) * 3000;
-        console.warn(`Claude API ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/3)`);
-        await new Promise(r => setTimeout(r, delay));
-        continue;
-      }
-
-      const error = await response.text();
-      throw new Error(`Claude API error: ${response.status} - ${error}`);
+      if (claudeResponse) break;
     }
 
     if (!claudeResponse) {
-      throw new Error('Claude API failed after 3 attempts');
+      throw new Error('All Claude models are currently overloaded. Please try again in a few minutes.');
     }
 
     const raw = claudeResponse.content[0].text;
