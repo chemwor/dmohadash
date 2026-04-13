@@ -1,13 +1,21 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
 export interface ShotPromptData {
   shot_number: number;
   character: string;
-  line: string;
-  duration: number;
+  dialogue?: string;
+  line?: string;
+  duration?: number;
+  duration_seconds?: number;
   kling_prompt: string;
+  elevenlabs_direction?: {
+    voice_type: string;
+    stability: number;
+    expressiveness: number;
+    delivery_notes: string;
+  };
 }
 
 @Component({
@@ -22,7 +30,7 @@ export interface ShotPromptData {
         </span>
         <div class="flex-1">
           <p class="text-sm font-medium text-slate-100">{{ shot.character }}</p>
-          <p class="text-xs text-slate-400">{{ shot.duration }}s</p>
+          <p class="text-xs text-slate-400">{{ getDuration() }}s</p>
         </div>
         @if (editable) {
           <button
@@ -34,10 +42,37 @@ export interface ShotPromptData {
         }
       </div>
 
+      <!-- Dialogue -->
       <div class="mb-3 px-3 py-2 bg-slate-700/50 rounded-lg border-l-2 border-indigo-500">
-        <p class="text-sm text-slate-200 italic">"{{ shot.line }}"</p>
+        <p class="text-sm text-slate-200 italic">"{{ getDialogue() }}"</p>
       </div>
 
+      <!-- ElevenLabs Direction -->
+      @if (shot.elevenlabs_direction) {
+        <div class="mb-3 bg-purple-500/5 border border-purple-500/20 rounded-lg p-3">
+          <p class="text-[10px] uppercase tracking-wider text-purple-400 mb-2">ElevenLabs Voice Direction</p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+            <div>
+              <p class="text-slate-500">Voice</p>
+              <p class="text-slate-300">{{ shot.elevenlabs_direction.voice_type }}</p>
+            </div>
+            <div>
+              <p class="text-slate-500">Stability</p>
+              <p class="text-slate-300">{{ shot.elevenlabs_direction.stability }}%</p>
+            </div>
+            <div>
+              <p class="text-slate-500">Expressiveness</p>
+              <p class="text-slate-300">{{ shot.elevenlabs_direction.expressiveness }}%</p>
+            </div>
+            <div>
+              <p class="text-slate-500">Delivery</p>
+              <p class="text-slate-300">{{ shot.elevenlabs_direction.delivery_notes }}</p>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Kling Prompt -->
       @if (editing) {
         <textarea
           [(ngModel)]="editablePrompt"
@@ -59,7 +94,7 @@ export interface ShotPromptData {
     </div>
   `
 })
-export class ShotPromptCardComponent {
+export class ShotPromptCardComponent implements OnInit {
   @Input() shot!: ShotPromptData;
   @Input() editable = false;
   @Output() promptChanged = new EventEmitter<string>();
@@ -70,6 +105,14 @@ export class ShotPromptCardComponent {
 
   ngOnInit(): void {
     this.editablePrompt = this.shot.kling_prompt;
+  }
+
+  getDialogue(): string {
+    return this.shot.dialogue || this.shot.line || '';
+  }
+
+  getDuration(): number {
+    return this.shot.duration_seconds || this.shot.duration || 0;
   }
 
   onPromptChange(): void {

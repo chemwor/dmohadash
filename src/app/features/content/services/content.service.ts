@@ -12,12 +12,22 @@ export interface VideoIdea {
   created_at: string;
 }
 
+export interface ElevenLabsDirection {
+  voice_type: string;
+  stability: number;
+  expressiveness: number;
+  delivery_notes: string;
+}
+
 export interface ShotPrompt {
   shot_number: number;
   character: string;
-  line: string;
-  duration: number;
+  dialogue?: string;
+  line?: string; // legacy compat
+  duration?: number;
+  duration_seconds?: number;
   kling_prompt: string;
+  elevenlabs_direction?: ElevenLabsDirection;
 }
 
 export interface VideoPrompt {
@@ -71,6 +81,7 @@ export interface GeneratedIdea {
   scenario: string;
   violation_type: string;
   fine_amount: number;
+  viral_hook?: string;
 }
 
 @Injectable({
@@ -141,6 +152,11 @@ export class ContentService {
         throw error;
       })
     );
+  }
+
+  regeneratePrompts(videoIdeaId: string): Observable<VideoPrompt> {
+    // Same endpoint as generatePrompts — the backend creates a new prompt record
+    return this.generatePrompts(videoIdeaId);
   }
 
   generateCopy(videoIdeaId: string, platforms: string[]): Observable<Record<string, PlatformCopy>> {

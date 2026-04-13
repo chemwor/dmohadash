@@ -87,12 +87,19 @@ import { CopyEditorComponent } from '../../components/copy-editor/copy-editor.co
             }
           </div>
 
-          <!-- STEP 2: PROMPTS -->
+          <!-- STEP 2: SCRIPT + KLING PROMPTS -->
           <div [class]="'card ' + (isUnlocked('prompt_ready') ? '' : 'opacity-50 pointer-events-none')">
-            <h2 class="section-header flex items-center gap-2">
-              <span [class]="'w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ' + (isUnlocked('prompt_ready') ? 'bg-green-500/20 text-green-400' : 'bg-slate-700 text-slate-500')">2</span>
-              Prompts
-            </h2>
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="section-header flex items-center gap-2 mb-0">
+                <span [class]="'w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center ' + (isUnlocked('prompt_ready') ? 'bg-green-500/20 text-green-400' : 'bg-slate-700 text-slate-500')">2</span>
+                Script + Kling Prompts
+              </h2>
+              @if (idea.prompt && (idea.status === 'prompt_ready' || idea.status === 'idea')) {
+                <button (click)="onRegenerateScript()" [disabled]="actionLoading" class="btn-secondary text-xs">
+                  {{ actionLoading ? 'Regenerating...' : 'Regenerate Script' }}
+                </button>
+              }
+            </div>
 
             @if (idea.prompt) {
               <div class="mb-4">
@@ -100,7 +107,7 @@ import { CopyEditorComponent } from '../../components/copy-editor/copy-editor.co
                 <div class="bg-slate-900 rounded-lg p-4 text-sm text-slate-200 whitespace-pre-wrap">{{ idea.prompt.script }}</div>
               </div>
 
-              <p class="text-xs text-slate-400 mb-3">Shots ({{ idea.prompt.shot_count }} shots, {{ idea.prompt.total_duration }}s total)</p>
+              <p class="text-xs text-slate-400 mb-3">{{ idea.prompt.shot_count }} shot{{ idea.prompt.shot_count > 1 ? 's' : '' }}, {{ idea.prompt.total_duration }}s total</p>
 
               <div class="space-y-3">
                 @for (shot of idea.prompt.shots; track shot.shot_number) {
@@ -419,6 +426,27 @@ export class VideoDetailComponent implements OnInit, OnDestroy {
         error: (err) => {
           this.actionLoading = false;
           this.error = err.message || 'Failed to generate prompts';
+        }
+      });
+  }
+
+  onRegenerateScript(): void {
+    if (!this.idea) return;
+    this.actionLoading = true;
+    this.error = '';
+
+    this.contentService.regeneratePrompts(this.idea.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (prompt) => {
+          if (this.idea) {
+            this.idea.prompt = prompt;
+          }
+          this.actionLoading = false;
+        },
+        error: (err) => {
+          this.actionLoading = false;
+          this.error = err.message || 'Failed to regenerate script';
         }
       });
   }

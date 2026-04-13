@@ -6,12 +6,9 @@ const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const HUMAN_VOICE_RULES = `
 
 WRITING STYLE RULES (critical, must follow):
-- Never use em-dashes (—) or en-dashes (–). Use periods, commas, colons, or parentheses instead.
-- Never use these words/phrases: delve, leverage, robust, seamlessly, comprehensive, holistic, empower, streamline, cutting-edge, state-of-the-art, embark, harness, tapestry, vibrant, transformative, paramount, pivotal, moreover, furthermore, in essence, it is worth noting, in conclusion, ultimately, navigate the complexities, in today's, in the realm of.
-- Do not start sentences with "Indeed", "Notably", "Importantly", or "However,".
-- Do not end with a "Conclusion" or "In summary" paragraph that just restates the body.
-- Write plain, direct, conversational English. Short sentences. No throat-clearing.
-- Sound like a real person wrote this, not like a press release.`;
+- Never use em-dashes or en-dashes. Use periods, commas, colons, or parentheses instead.
+- Never use: delve, leverage, robust, seamlessly, comprehensive, holistic, empower, streamline, cutting-edge, state-of-the-art, embark, harness, tapestry, vibrant, transformative, paramount, pivotal, moreover, furthermore, in essence, it is worth noting, in conclusion, ultimately, navigate the complexities, in today's, in the realm of.
+- Write plain, direct, conversational English. Short sentences.`;
 
 const headers = {
   'Access-Control-Allow-Origin': '*',
@@ -20,67 +17,88 @@ const headers = {
   'Content-Type': 'application/json',
 };
 
+// Video types that are implemented vs coming soon
+const IMPLEMENTED_TYPES = ['board_meeting', 'doorbell_footage', 'news_broadcast'];
+const COMING_SOON_TYPES = ['street_confrontation', 'official_document', 'homeowner_pov'];
+
+const TYPE_DESCRIPTIONS: Record<string, string> = {
+  board_meeting: 'an HOA board meeting where the board president announces an absurd violation and fine to a stunned homeowner',
+  doorbell_footage: 'Ring doorbell camera footage catching an HOA representative performing an absurd inspection at the front door',
+  news_broadcast: 'a local news anchor delivering a breaking story about a ridiculous HOA fine with completely straight delivery',
+};
+
+// Top-performing content insights from actual account data (YouTube analytics)
+const PERFORMANCE_CONTEXT = `
+TOP-PERFORMING CONTENT DATA FROM OUR ACCOUNT:
+- "HOA Dog Incident" = 5,623 views (BEST performer)
+- "HOA Rep Caught Measuring My Tulip at 6:47am" = 4,207 views
+- "Cat HOA Incident" = 2,671 views
+- "Light HOA Incident" = 1,984 views
+- "Wrong Font on Welcome Mat" = 1,440 views
+- "HOA Spotify Incident" = 1,273 views
+- "HOA Garden Gnome Incident" = 1,187 views
+FLOPS (under 20 views): news about grass, tree shadows, Amazon packages, trash cans
+
+PATTERNS THAT WORK:
+- Animals/pets in the violation (dogs, cats, birds) get 2-5x more views
+- "HOA [Subject] Incident" naming gets the most clicks
+- Ring camera "caught on camera" angle feels voyeuristic, high engagement
+- Absurd measurement specifics (measuring tulips, counting decibels)
+- Mundane everyday objects being treated as serious violations
+
+PATTERNS THAT FLOP:
+- Generic violations everyone has (trash cans, generic landscaping)
+- Abstract concepts (shadows, generic "noise")
+- News broadcast format gets low views unless the content is extremely absurd
+
+USE THIS DATA: Weight your ideas toward the patterns that work. Animals, specific measurements, caught-on-camera angles, and everyday objects treated as crimes.`;
+
+const SYSTEM_PROMPT = `You are a script writer for viral HOA content. Generate exactly 4 video scenario ideas for the given video type. Return only valid JSON, no markdown, no preamble.
+
+${PERFORMANCE_CONTEXT}
+
+Rules:
+- Fine amounts must be between $8,000 and $25,000
+- Scenario must be one sentence maximum
+- Do not describe character reactions or board behavior in the scenario. That is written at script stage.
+- The violation must be trivially mundane
+- The enforcement action must be absurdly serious
+- Lean into animals, pets, specific measurements, and everyday objects based on what performs best
+- The viral_hook is the single most quotable phrase from the scenario. The thing someone would repeat to a friend.
+
+Return this exact format:
+{"ideas":[{"scenario":"one sentence","violation_type":"short label","fine_amount":number,"viral_hook":"the most shareable phrase"}]}`;
+
 export const handler: Handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers, body: '' };
   }
 
   if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: 'Method not allowed' }),
-    };
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
   if (!ANTHROPIC_API_KEY) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }),
-    };
+    return { statusCode: 500, headers, body: JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }) };
   }
 
   try {
     const { type, seed } = JSON.parse(event.body || '{}');
 
     if (!type) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: 'type is required' }),
-      };
+      return { statusCode: 400, headers, body: JSON.stringify({ error: 'type is required' }) };
     }
 
-    const typeDescriptions: Record<string, string> = {
-      board_meeting: 'an HOA board meeting scenario with board members and residents',
-      doorbell_footage: 'a Ring/doorbell camera capturing an HOA violation encounter',
-      street_confrontation: 'a neighborhood street confrontation over an HOA rule',
-      official_document: 'a dramatic reading or reveal of an absurd HOA violation letter',
-      news_broadcast: 'a local news broadcast covering a ridiculous HOA dispute',
-      homeowner_pov: 'a first-person homeowner perspective dealing with HOA overreach',
-    };
+    if (COMING_SOON_TYPES.includes(type)) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: `${type} is coming soon. Use: ${IMPLEMENTED_TYPES.join(', ')}` }) };
+    }
 
-    const typeDesc = typeDescriptions[type] || type;
-    const seedText = seed ? `\n\nUse this as inspiration: "${seed}"` : '';
+    const typeDesc = TYPE_DESCRIPTIONS[type] || type;
+    const seedText = seed ? `\n\nUser wants ideas inspired by: "${seed}"` : '';
 
-    const systemPrompt = `You are a viral social media content strategist for DisputeMyHOA, a service that helps homeowners fight unfair HOA fines. Generate creative, entertaining, and relatable video scenario ideas that would go viral on TikTok/Instagram Reels. Each scenario should feel authentic and tap into the frustration homeowners feel with overreaching HOAs.
+    const userPrompt = `Generate exactly 4 video scenario ideas for this type: ${typeDesc}.${seedText}
 
-Fine amounts must be between $8,000 and $25,000. The absurdly high fine relative to the trivial violation is the core of the humor. Never generate a fine under $5,000.
-
-Keep scenario to one sentence maximum. Do not describe character reactions or board behavior in the idea — that gets written at the script stage. Just describe the violation and the absurd enforcement action.
-
-Return JSON only, no markdown, no code fences.`;
-
-    const userPrompt = `Generate exactly 3 different video idea variants for this type: ${typeDesc}.${seedText}
-
-Examples of good ideas:
-- Scenario: "HOA fines homeowner for trash can visible 4 minutes past pickup" / Violation: "Trash can visible from street" / Fine: $12,000
-- Scenario: "Board measures doormat and finds it 2 inches too wide" / Violation: "Oversized doormat" / Fine: $9,500
-- Scenario: "HOA bans petunias after color swatch test determines they are vibrant pink" / Violation: "Unapproved flower color" / Fine: $15,000
-
-Return this exact JSON structure:
-{"ideas":[{"scenario":"<one punchy sentence>","violation_type":"<the specific HOA violation>","fine_amount":<integer between 8000 and 25000>}]}`;
+Each idea must have a fine between $8,000 and $25,000. Return exactly 4 ideas in the JSON format specified.`;
 
     const response = await fetch(ANTHROPIC_API_URL, {
       method: 'POST',
@@ -92,7 +110,7 @@ Return this exact JSON structure:
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1024,
-        system: systemPrompt + HUMAN_VOICE_RULES,
+        system: SYSTEM_PROMPT + HUMAN_VOICE_RULES,
         messages: [{ role: 'user', content: userPrompt }],
       }),
     });
@@ -106,6 +124,14 @@ Return this exact JSON structure:
     const raw = data.content[0].text;
     const text = raw.replace(/```(?:json)?\s*/g, '').replace(/```\s*/g, '').trim();
     const parsed = JSON.parse(text);
+
+    // Validate fine amounts
+    if (parsed.ideas) {
+      parsed.ideas = parsed.ideas.filter((idea: any) => {
+        const amt = idea.fine_amount;
+        return typeof amt === 'number' && amt >= 8000 && amt <= 25000;
+      });
+    }
 
     return {
       statusCode: 200,
