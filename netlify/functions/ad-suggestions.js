@@ -1054,14 +1054,14 @@ async function processAnalysis(jobId, startDate, endDate, customerId) {
 
 CRITICAL BUSINESS MODEL CONSTRAINTS — READ BEFORE MAKING ANY RECOMMENDATIONS:
 
-DisputeMyHOA is a $49 self-service SaaS tool that generates HOA violation response letters using AI. It is NOT a law firm, NOT a legal referral service, and NOT a consultation service.
+DisputeMyHOA is a $29 self-service SaaS tool that generates HOA violation response letters using AI. It is NOT a law firm, NOT a legal referral service, and NOT a consultation service.
 
 The target customer is a homeowner who wants to handle their own HOA dispute without hiring an attorney. They are comfortable with a self-serve digital product.
 
 WRONG-INTENT TRAFFIC (do NOT recommend targeting these):
 - Any search containing: lawyer, attorney, lawyers, attorneys, near me, legal advice, free consultation, pro bono, lawsuit, sue, court
 - Also wrong-intent: template, templates, free, sample, example, diy template, word doc, download
-- These users want human legal representation OR free resources and will not convert at $49
+- These users want human legal representation OR free resources and will not convert at $29
 
 RIGHT-INTENT TRAFFIC (DO recommend targeting these):
 - Searches about responding to HOA notices themselves
@@ -1073,7 +1073,7 @@ AD COPY CONSTRAINTS:
 - Never suggest copy that implies legal representation, attorneys, or lawyers
 - Never suggest copy that implies phone consultations or human advisors
 - The product disclaimer "Not legal advice" must remain
-- Copy should emphasize: fast, affordable, self-serve, AI-generated letters, $49 price point
+- Copy should emphasize: fast, affordable, self-serve, AI-generated letters, $29 price point
 
 NEGATIVE KEYWORD LOGIC:
 - Any search term with zero conversions AND containing wrong-intent words (attorney, lawyer, near me, template, free, sample, download, etc.) should be flagged as a NEGATIVE keyword candidate, not an ADD candidate — regardless of CTR or click volume
@@ -1219,7 +1219,7 @@ Based on this data, provide optimization suggestions in the following JSON forma
       "action": "add|pause|modify",
       "keyword": "the specific keyword - must align with DIY self-serve intent",
       "matchType": "EXACT|PHRASE|BROAD",
-      "rationale": "why this attracts self-serve customers willing to pay $49",
+      "rationale": "why this attracts self-serve customers willing to pay $29",
       "priority": "high|medium|low"
     }
   ],
@@ -1227,7 +1227,7 @@ Based on this data, provide optimization suggestions in the following JSON forma
     {
       "type": "headline|description",
       "current": "current text if modifying, or null if adding new",
-      "suggested": "new text - must emphasize self-serve, AI, $49, fast, NOT legal advice",
+      "suggested": "new text - must emphasize self-serve, AI, $29, fast, NOT legal advice",
       "rationale": "why this better qualifies DIY customers and repels attorney-seekers",
       "priority": "high|medium|low"
     }
@@ -1273,7 +1273,7 @@ IMPORTANT ANALYSIS RULES:
 4. Focus on keywords that indicate DIY/self-serve intent: "how to write", "template", "respond to", "fight fine myself"
 5. Ad copy must never imply human help, phone calls, or legal representation
 
-DEVICE ANALYSIS: If mobile spend exceeds 60% of total spend, recommend a mobile bid reduction of 20-30%. Desktop users convert better for a $49 self-serve web product.
+DEVICE ANALYSIS: If mobile spend exceeds 60% of total spend, recommend a mobile bid reduction of 20-30%. Desktop users convert better for a $29 self-serve web product.
 
 HOUR OF DAY: Identify the 3 lowest-impression hours. If overnight hours (12AM-6AM) represent more than 15% of spend, recommend ad scheduling to suppress those hours.
 
