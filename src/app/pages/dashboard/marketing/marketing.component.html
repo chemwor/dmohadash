@@ -312,32 +312,32 @@
 
       <!-- Cost per Lead -->
       <div class="card">
-        @if (loadingStates.googleAds || loadingStates.klaviyo) {
+        @if (loadingStates.googleAds || funnelLoading) {
           <app-loading-skeleton height="60px"></app-loading-skeleton>
         } @else {
           <p class="text-xs text-slate-400 mb-1">Cost per Lead</p>
-          <p class="text-2xl font-bold" [class]="getCostPerLead() > 0 && getCostPerLead() < 20 ? 'text-green-400' : getCostPerLead() > 0 && getCostPerLead() < 50 ? 'text-yellow-400' : 'text-slate-100'">
-            @if (getCostPerLead() > 0) {
-              ${{ getCostPerLead() | number:'1.2-2' }}
-            } @else {
-              N/A
-            }
-          </p>
-          <p class="text-xs text-slate-500 mt-1">Ad Spend / {{ klaviyoData?.leadsToday || 0 }} lead{{ (klaviyoData?.leadsToday || 0) === 1 ? '' : 's' }} today</p>
+          @if (funnel && funnel.total > 0 && googleAdsData) {
+            <p class="text-2xl font-bold" [class]="(googleAdsData.dailySpend / funnel.total) < 20 ? 'text-green-400' : (googleAdsData.dailySpend / funnel.total) < 50 ? 'text-yellow-400' : 'text-red-400'">
+              ${{ (googleAdsData.dailySpend / funnel.total) | number:'1.2-2' }}
+            </p>
+          } @else {
+            <p class="text-2xl font-bold text-slate-100">N/A</p>
+          }
+          <p class="text-xs text-slate-500 mt-1">Ad Spend / {{ funnel?.total || 0 }} total leads</p>
         }
       </div>
 
-      <!-- Leads Today -->
+      <!-- Leads in Funnel -->
       <div class="card">
-        @if (loadingStates.klaviyo) {
+        @if (funnelLoading) {
           <app-loading-skeleton height="60px"></app-loading-skeleton>
         } @else {
-          <p class="text-xs text-slate-400 mb-1">Leads Today</p>
-          <p class="text-2xl font-bold" [class]="(klaviyoData?.leadsToday || 0) > 0 ? 'text-indigo-400' : 'text-slate-100'">
-            +{{ klaviyoData?.leadsToday || 0 }}
+          <p class="text-xs text-slate-400 mb-1">Email Funnel</p>
+          <p class="text-2xl font-bold" [class]="(funnel?.total || 0) > 0 ? 'text-indigo-400' : 'text-slate-100'">
+            {{ funnel?.total || 0 }}
           </p>
           <p class="text-xs text-slate-500 mt-1">
-            {{ klaviyoData?.totalLeads || 0 }} total leads
+            {{ funnel?.reached?.purchased || 0 }} purchased (${{ funnel?.revenue_estimate || 0 }})
           </p>
         }
       </div>
@@ -583,118 +583,59 @@
       </div>
     </section>
 
-    <!-- Email / Klaviyo -->
+    <!-- Email Funnel -->
     <section>
-      <h2 class="section-header">Email Collection (Klaviyo)</h2>
+      <h2 class="section-header">Email Funnel (Resend)</h2>
       <div class="card">
-        @if (loadingStates.klaviyo) {
+        @if (funnelLoading) {
           <div class="space-y-4">
             @for (i of [1, 2, 3]; track i) {
               <app-loading-skeleton height="24px"></app-loading-skeleton>
             }
           </div>
-        } @else if (errors.klaviyo) {
-          <div class="text-center py-4">
-            <p class="text-red-500 mb-2">{{ errors.klaviyo }}</p>
-            <button (click)="loadKlaviyoData()" class="text-indigo-400 hover:text-indigo-300 underline text-sm">
-              Retry
-            </button>
+        } @else if (funnel && funnel.total > 0) {
+          <!-- Funnel Pipeline -->
+          <div class="grid grid-cols-3 gap-3 mb-4">
+            <div class="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 text-center">
+              <p class="text-2xl font-bold text-blue-400">{{ funnel.reached.quick_preview }}</p>
+              <p class="text-[10px] uppercase tracking-wider text-blue-400/70 mt-1">Quick Preview</p>
+            </div>
+            <div class="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-center">
+              <p class="text-2xl font-bold text-amber-400">{{ funnel.reached.full_preview }}</p>
+              <p class="text-[10px] uppercase tracking-wider text-amber-400/70 mt-1">Full Preview</p>
+              <p class="text-[10px] text-slate-500">{{ funnel.conversion_rates.quick_to_full }}%</p>
+            </div>
+            <div class="bg-green-500/10 border border-green-500/20 rounded-lg p-3 text-center">
+              <p class="text-2xl font-bold text-green-400">{{ funnel.reached.purchased }}</p>
+              <p class="text-[10px] uppercase tracking-wider text-green-400/70 mt-1">Purchased</p>
+              <p class="text-[10px] text-slate-500">{{ funnel.conversion_rates.full_to_purchased }}%</p>
+            </div>
           </div>
-        } @else if (klaviyoData?.isMockData) {
-          <div class="text-center py-8">
-            <svg class="w-12 h-12 mx-auto text-slate-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            <p class="text-slate-400 mb-2">Klaviyo not connected</p>
-            <p class="text-xs text-slate-500">Add KLAVIYO_API_KEY to see email data</p>
+
+          <!-- Bottom stats -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-700">
+            <div>
+              <p class="text-[10px] uppercase tracking-wider text-slate-500">Overall Conv.</p>
+              <p class="text-sm font-bold text-slate-100">{{ funnel.conversion_rates.overall }}%</p>
+            </div>
+            <div>
+              <p class="text-[10px] uppercase tracking-wider text-slate-500">Revenue</p>
+              <p class="text-sm font-bold text-green-400">${{ funnel.revenue_estimate }}</p>
+            </div>
+            <div>
+              <p class="text-[10px] uppercase tracking-wider text-slate-500">Nudges Sent</p>
+              <p class="text-sm font-bold text-slate-100">{{ funnel.nudges.nudge_1_sent + funnel.nudges.nudge_2_sent + funnel.nudges.nudge_3_sent }}</p>
+            </div>
+            <div>
+              <p class="text-[10px] uppercase tracking-wider text-slate-500">Stalled</p>
+              <p class="text-sm font-bold text-amber-400">{{ funnel.stages.quick_preview_complete + funnel.stages.full_preview_viewed }}</p>
+            </div>
           </div>
         } @else {
-          <!-- Total Profiles -->
-          <div class="mb-4">
-            <div class="flex items-baseline justify-between">
-              <span class="text-3xl font-bold text-slate-100">{{ klaviyoData?.totalProfiles | number }}</span>
-              @if (klaviyoData && klaviyoData.emailsCollectedToday && klaviyoData.emailsCollectedToday > 0) {
-                <span class="text-sm text-green-500">+{{ klaviyoData.emailsCollectedToday }} today</span>
-              }
-            </div>
-            <p class="text-sm text-slate-400 mt-1">Total Emails (All Profiles)</p>
+          <div class="text-center py-8">
+            <p class="text-slate-400 text-sm">No one in the email funnel yet.</p>
+            <p class="text-xs text-slate-500 mt-1">Emails are tracked when customers submit the case form.</p>
           </div>
-
-          <!-- Emails in Flow -->
-          <div class="mb-4 p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-lg">
-            <div class="flex items-baseline justify-between">
-              <span class="text-sm text-slate-400">Emails in Abandonment Flow</span>
-              <span class="text-xl font-bold text-indigo-400">{{ klaviyoData?.totalEmailsInFlow | number }}</span>
-            </div>
-          </div>
-
-          <!-- List Breakdown -->
-          <div class="border-t border-slate-700 pt-4">
-            <h3 class="text-sm font-medium text-slate-300 mb-3">Flow Breakdown</h3>
-            <div class="space-y-3">
-              <div class="flex justify-between items-center p-3 bg-purple-500/10 rounded-lg">
-                <div>
-                  <p class="text-slate-100 font-medium">Full Preview Abandonment</p>
-                  <p class="text-xs text-slate-500">Completed full preview form</p>
-                </div>
-                <span class="text-xl font-bold text-purple-400">{{ klaviyoData?.fullPreviewEmails | number }}</span>
-              </div>
-              <div class="flex justify-between items-center p-3 bg-blue-500/10 rounded-lg">
-                <div>
-                  <p class="text-slate-100 font-medium">Quick Preview Abandonment</p>
-                  <p class="text-xs text-slate-500">Completed quick preview form</p>
-                </div>
-                <span class="text-xl font-bold text-blue-400">{{ klaviyoData?.quickPreviewEmails | number }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Flows -->
-          @if (klaviyoData && klaviyoData.flowStats && klaviyoData.flowStats.length > 0) {
-            <div class="border-t border-slate-700 mt-4 pt-4">
-              <h3 class="text-sm font-medium text-slate-300 mb-3">Flows ({{ klaviyoData.totalFlows }})</h3>
-              <div class="space-y-3">
-                @for (flow of klaviyoData!.flowStats; track flow.name) {
-                  <div class="p-3 bg-slate-700/30 rounded-lg border border-slate-700/50">
-                    <div class="flex justify-between items-center mb-2">
-                      <span class="text-sm text-slate-200 font-medium truncate mr-2">{{ flow.name }}</span>
-                      <span class="text-xs px-2 py-0.5 rounded-full flex-shrink-0"
-                        [class]="flow.status === 'live' ? 'bg-green-500/20 text-green-400' : 'bg-slate-500/20 text-slate-400'">
-                        {{ flow.status }}
-                      </span>
-                    </div>
-                    @if (flow.sends > 0) {
-                      <div class="grid grid-cols-3 gap-2 text-center">
-                        <div>
-                          <p class="text-lg font-bold text-slate-100">{{ flow.openRate }}%</p>
-                          <p class="text-xs text-slate-500">Open Rate</p>
-                        </div>
-                        <div>
-                          <p class="text-lg font-bold text-slate-100">{{ flow.clickRate }}%</p>
-                          <p class="text-xs text-slate-500">Click Rate</p>
-                        </div>
-                        <div>
-                          <p class="text-lg font-bold text-slate-100">{{ flow.deliveryRate }}%</p>
-                          <p class="text-xs text-slate-500">Delivered</p>
-                        </div>
-                      </div>
-                      <div class="flex justify-between mt-2 pt-2 border-t border-slate-700/50 text-xs text-slate-500">
-                        <span>{{ flow.sends }} sent</span>
-                        <span>{{ flow.opens }} opens</span>
-                        <span>{{ flow.clicks }} clicks</span>
-                        @if (flow.bounces > 0) {
-                          <span class="text-red-400">{{ flow.bounces }} bounced</span>
-                        }
-                      </div>
-                    } @else {
-                      <p class="text-xs text-slate-500">No sends in last 30 days</p>
-                    }
-                  </div>
-                }
-              </div>
-              <p class="text-xs text-slate-600 mt-2">Last 30 days</p>
-            </div>
-          }
         }
       </div>
     </section>

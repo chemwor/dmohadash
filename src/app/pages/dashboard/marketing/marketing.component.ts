@@ -9,6 +9,7 @@ import { LoadingSkeletonComponent } from '../../../shared/components/loading-ske
 import { KlaviyoService, KlaviyoData } from '../../../core/services/klaviyo.service';
 import { GoogleAdsService, GoogleAdsData, GoogleAdsPeriod, Campaign, ManagedCampaign } from '../../../core/services/google-ads.service';
 import { AdSuggestionsService, AdSuggestionsData, AdSuggestionsRequest } from '../../../core/services/ad-suggestions.service';
+import { EmailFunnelService, FunnelMetrics } from '../../../core/services/email-funnel.service';
 
 @Component({
   selector: 'app-marketing',
@@ -29,6 +30,10 @@ export class MarketingComponent implements OnInit, OnDestroy {
   managedCampaignsError = '';
   expandedCampaigns: Record<string, boolean> = {};
   campaignStatusUpdating: Record<string, boolean> = {};
+
+  // Email funnel (replaces Klaviyo for lead metrics)
+  funnel: FunnelMetrics | null = null;
+  funnelLoading = false;
 
   selectedPeriod: GoogleAdsPeriod = 'today';
   periods = [
@@ -74,7 +79,8 @@ export class MarketingComponent implements OnInit, OnDestroy {
   constructor(
     private klaviyoService: KlaviyoService,
     private googleAdsService: GoogleAdsService,
-    private adSuggestionsService: AdSuggestionsService
+    private adSuggestionsService: AdSuggestionsService,
+    private funnelService: EmailFunnelService
   ) {
     // Initialize date range to last 30 days
     const today = new Date();
@@ -103,11 +109,22 @@ export class MarketingComponent implements OnInit, OnDestroy {
     this.loadKlaviyoData();
     this.loadGoogleAdsData();
     this.loadManagedCampaigns();
+    this.loadFunnelMetrics();
 
     setTimeout(() => {
       this.isRefreshing = false;
       this.lastRefreshed = new Date();
     }, 1000);
+  }
+
+  loadFunnelMetrics(): void {
+    this.funnelLoading = true;
+    this.funnelService.getMetrics()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(data => {
+        this.funnel = data;
+        this.funnelLoading = false;
+      });
   }
 
   loadManagedCampaigns(): void {
