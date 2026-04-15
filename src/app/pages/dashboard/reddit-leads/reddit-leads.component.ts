@@ -219,14 +219,12 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
                   >
                     {{ drafting[lead.id] ? 'Drafting...' : 'Draft Reply' }}
                   </button>
-                  @if (lead.status === 'replied') {
-                    <button
-                      (click)="openManualFollowUp(lead)"
-                      class="px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-medium hover:bg-amber-500/30 transition-colors"
-                    >
-                      Reply to Reply
-                    </button>
-                  }
+                  <button
+                    (click)="openManualFollowUp(lead)"
+                    class="px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-medium hover:bg-amber-500/30 transition-colors"
+                  >
+                    Reply to Reply
+                  </button>
                   @if (lead.status === 'new') {
                     <button
                       (click)="markStatus(lead, 'replied')"
