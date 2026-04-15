@@ -92,6 +92,14 @@ export class ContentService {
 
   constructor(private http: HttpClient) {}
 
+  // --- YouTube videos (via backend proxy to avoid CORS) ---
+
+  getYouTubeVideos(): Observable<{ id: string; title: string; views: number; published: string; url: string }[]> {
+    return this.http.get<any>(`${this.functionsUrl}/content-data?youtube_videos=true`).pipe(
+      catchError(() => of([]))
+    );
+  }
+
   // --- Supabase CRUD via direct Netlify function proxy ---
 
   getIdeas(status?: string): Observable<VideoIdea[]> {

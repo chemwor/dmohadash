@@ -34,6 +34,33 @@ export const handler: Handler = async (event) => {
     if (event.httpMethod === 'GET') {
       const id = event.queryStringParameters?.id;
       const status = event.queryStringParameters?.status;
+      const youtubeVideos = event.queryStringParameters?.youtube_videos;
+
+      // YouTube videos proxy (avoids CORS from browser)
+      if (youtubeVideos) {
+        try {
+          const ytResp = await fetch(
+            'https://www.youtube.com/feeds/videos.xml?channel_id=UCB2_1EyFakAwhXvtvkbl19g',
+            { headers: { 'User-Agent': 'DMHOA-Dashboard/1.0' } }
+          );
+          if (!ytResp.ok) {
+            return { statusCode: 200, headers, body: JSON.stringify([]) };
+          }
+          const xml = await ytResp.text();
+          const entries = [...xml.matchAll(/<entry>[\s\S]*?<\/entry>/g)];
+          const videos = entries.map(e => {
+            const entry = e[0];
+            const title = (entry.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '';
+            const vid = (entry.match(/<yt:videoId>([\s\S]*?)<\/yt:videoId>/) || [])[1] || '';
+            const views = parseInt((entry.match(/views="(\d+)"/) || [])[1] || '0', 10);
+            const published = (entry.match(/<published>([\s\S]*?)<\/published>/) || [])[1]?.substring(0, 10) || '';
+            return { id: vid, title, views, published, url: `https://www.youtube.com/watch?v=${vid}` };
+          }).sort((a: any, b: any) => b.views - a.views);
+          return { statusCode: 200, headers, body: JSON.stringify(videos) };
+        } catch {
+          return { statusCode: 200, headers, body: JSON.stringify([]) };
+        }
+      }
 
       if (id) {
         // Fetch single idea with related data

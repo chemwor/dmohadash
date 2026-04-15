@@ -129,29 +129,15 @@ export class ContentDashboardComponent implements OnInit, OnDestroy {
     this.loadYouTubeVideos();
   }
 
-  async loadYouTubeVideos(): Promise<void> {
-    try {
-      const resp = await fetch('https://www.youtube.com/feeds/videos.xml?channel_id=UCB2_1EyFakAwhXvtvkbl19g');
-      if (!resp.ok) return;
-      const xml = await resp.text();
-
-      const entries = xml.match(/<entry>[\s\S]*?<\/entry>/g) || [];
-      this.youtubeVideos = entries.map(entry => {
-        const title = (entry.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '';
-        const id = (entry.match(/<yt:videoId>([\s\S]*?)<\/yt:videoId>/) || [])[1] || '';
-        const views = parseInt((entry.match(/views="(\d+)"/) || [])[1] || '0', 10);
-        const published = (entry.match(/<published>([\s\S]*?)<\/published>/) || [])[1]?.substring(0, 10) || '';
-        return {
-          id,
-          title,
-          views,
-          published,
-          url: `https://www.youtube.com/watch?v=${id}`,
-        };
-      }).sort((a, b) => b.views - a.views);
-    } catch (e) {
-      // Non-fatal
-    }
+  loadYouTubeVideos(): void {
+    // Fetch via backend proxy to avoid CORS. The content-data function
+    // could serve this, but for now use a simple Netlify function proxy.
+    // Fallback: just skip if unavailable.
+    this.contentService.getYouTubeVideos()
+      .subscribe({
+        next: (videos) => { this.youtubeVideos = videos; },
+        error: () => { /* non-fatal */ }
+      });
   }
 
   ngOnDestroy(): void {
