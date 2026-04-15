@@ -219,6 +219,14 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
                   >
                     {{ drafting[lead.id] ? 'Drafting...' : 'Draft Reply' }}
                   </button>
+                  @if (lead.status === 'replied') {
+                    <button
+                      (click)="openManualFollowUp(lead)"
+                      class="px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-medium hover:bg-amber-500/30 transition-colors"
+                    >
+                      Reply to Reply
+                    </button>
+                  }
                   @if (lead.status === 'new') {
                     <button
                       (click)="markStatus(lead, 'replied')"
@@ -385,6 +393,83 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
         </div>
       </div>
     }
+
+    <!-- Manual Follow-Up Modal (paste their reply) -->
+    @if (manualFollowUpLead) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" (click)="closeManualFollowUp()">
+        <div class="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col" (click)="$event.stopPropagation()">
+          <div class="flex items-center justify-between p-5 border-b border-slate-700">
+            <div class="flex-1 min-w-0 mr-4">
+              <h3 class="text-lg font-semibold text-slate-100">Reply to Reply</h3>
+              <p class="text-xs text-slate-400 mt-0.5 truncate">{{ manualFollowUpLead.title }}</p>
+            </div>
+            <button (click)="closeManualFollowUp()" class="text-slate-500 hover:text-slate-300 text-2xl leading-none">&times;</button>
+          </div>
+
+          <div class="flex-1 overflow-y-auto p-5 space-y-4">
+            @if (!manualFollowUpText) {
+              <div>
+                <label class="text-xs text-slate-400 mb-1.5 block">Paste their reply here</label>
+                <textarea
+                  [(ngModel)]="manualTheirReply"
+                  class="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  rows="6"
+                  placeholder="Copy the reply from Reddit and paste it here..."
+                ></textarea>
+                <button
+                  (click)="generateManualFollowUp()"
+                  [disabled]="manualFollowUpLoading || !manualTheirReply.trim()"
+                  class="btn-primary text-sm mt-3 w-full"
+                >
+                  {{ manualFollowUpLoading ? 'Drafting follow-up...' : 'Generate Follow-Up' }}
+                </button>
+              </div>
+            } @else {
+              <div class="bg-slate-800 rounded-lg p-3 border border-slate-700">
+                <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Their reply</p>
+                <p class="text-sm text-slate-300">{{ manualTheirReply.length > 300 ? manualTheirReply.substring(0, 300) + '...' : manualTheirReply }}</p>
+              </div>
+              <div>
+                <p class="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Your follow-up</p>
+                <textarea
+                  [(ngModel)]="manualFollowUpText"
+                  class="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  rows="8"
+                ></textarea>
+                <p class="text-[10px] text-slate-500 mt-1">No product mention this time. Just be helpful.</p>
+              </div>
+            }
+          </div>
+
+          <div class="flex items-center justify-between gap-2 p-5 border-t border-slate-700">
+            <a
+              [href]="manualFollowUpLead.url"
+              target="_blank"
+              rel="noopener"
+              class="text-xs text-indigo-400 hover:text-indigo-300 underline"
+            >
+              Open thread
+            </a>
+            <div class="flex gap-2">
+              @if (manualFollowUpText) {
+                <button
+                  (click)="copyManualFollowUp()"
+                  class="px-4 py-2 text-sm bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 font-medium"
+                >
+                  {{ manualFollowUpCopied ? 'Copied!' : 'Copy to Clipboard' }}
+                </button>
+              }
+              <button
+                (click)="closeManualFollowUp()"
+                class="px-4 py-2 text-sm bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: [`
     .line-clamp-2 {
@@ -413,6 +498,13 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
   followUpText = '';
   followUpLoading = false;
   followUpCopied = false;
+
+  // Manual follow-up (paste their reply yourself)
+  manualFollowUpLead: any = null;
+  manualTheirReply = '';
+  manualFollowUpText = '';
+  manualFollowUpLoading = false;
+  manualFollowUpCopied = false;
 
   // Draft reply state
   drafting: Record<string, boolean> = {};
@@ -623,6 +715,47 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
     const diffHr = Math.floor(diffMin / 60);
     if (diffHr < 24) return `${diffHr}h ago`;
     return `${Math.floor(diffHr / 24)}d ago`;
+  }
+
+  // --- Manual Follow-Up (paste their reply) ---
+
+  openManualFollowUp(lead: any): void {
+    this.manualFollowUpLead = lead;
+    this.manualTheirReply = '';
+    this.manualFollowUpText = '';
+    this.manualFollowUpLoading = false;
+    this.manualFollowUpCopied = false;
+  }
+
+  closeManualFollowUp(): void {
+    this.manualFollowUpLead = null;
+    this.manualTheirReply = '';
+    this.manualFollowUpText = '';
+  }
+
+  generateManualFollowUp(): void {
+    if (!this.manualTheirReply.trim() || !this.manualFollowUpLead) return;
+    this.manualFollowUpLoading = true;
+    this.manualFollowUpText = '';
+
+    this.leadsService.draftFollowUp(this.manualFollowUpLead.id, this.manualTheirReply, this.manualFollowUpLead.title)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          this.manualFollowUpLoading = false;
+          if (result.ok && result.reply) {
+            this.manualFollowUpText = result.reply;
+          }
+        },
+        error: () => { this.manualFollowUpLoading = false; }
+      });
+  }
+
+  copyManualFollowUp(): void {
+    if (!this.manualFollowUpText) return;
+    navigator.clipboard.writeText(this.manualFollowUpText);
+    this.manualFollowUpCopied = true;
+    setTimeout(() => this.manualFollowUpCopied = false, 2000);
   }
 
   // --- Draft Reply ---
