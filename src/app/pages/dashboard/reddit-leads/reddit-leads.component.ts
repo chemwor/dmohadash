@@ -220,7 +220,7 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
                     {{ drafting[lead.id] ? 'Drafting...' : 'Draft Reply' }}
                   </button>
                   <button
-                    (click)="openManualFollowUp(lead)"
+                    (click)="$event.stopPropagation(); openManualFollowUp(lead)"
                     class="px-3 py-1.5 bg-amber-500/20 text-amber-400 rounded-lg text-xs font-medium hover:bg-amber-500/30 transition-colors"
                   >
                     Reply to Reply
@@ -718,11 +718,13 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
   // --- Manual Follow-Up (paste their reply) ---
 
   openManualFollowUp(lead: any): void {
+    console.log('openManualFollowUp called', lead?.id, lead?.title);
     this.manualFollowUpLead = lead;
     this.manualTheirReply = '';
     this.manualFollowUpText = '';
     this.manualFollowUpLoading = false;
     this.manualFollowUpCopied = false;
+    console.log('manualFollowUpLead set:', !!this.manualFollowUpLead);
   }
 
   closeManualFollowUp(): void {
