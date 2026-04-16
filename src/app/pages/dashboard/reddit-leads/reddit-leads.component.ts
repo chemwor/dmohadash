@@ -122,6 +122,12 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
                     >
                       View Thread
                     </a>
+                    <button
+                      (click)="dismissReply(reply)"
+                      class="px-2.5 py-1 text-[11px] bg-slate-700/50 text-slate-500 rounded hover:bg-slate-600 hover:text-slate-300"
+                    >
+                      Dismiss
+                    </button>
                   </div>
                 </div>
               </div>
@@ -499,6 +505,7 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
   checkingReplies = false;
   repliesChecked = false;
   repliesMessage = '';
+  private dismissedReplies: Set<string> = new Set();
 
   // Follow-up drafting
   followUpReply: any = null;
@@ -541,10 +548,22 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
   constructor(private leadsService: LeadsService) {}
 
   ngOnInit(): void {
+    this.loadDismissedReplies();
     this.loadLeads();
     this.loadNewCount();
     this.loadDailyStats();
     this.checkForReplies();
+  }
+
+  private loadDismissedReplies(): void {
+    try {
+      const stored = localStorage.getItem('dmhoa_dismissed_replies');
+      if (stored) this.dismissedReplies = new Set(JSON.parse(stored));
+    } catch {}
+  }
+
+  private saveDismissedReplies(): void {
+    localStorage.setItem('dmhoa_dismissed_replies', JSON.stringify([...this.dismissedReplies]));
   }
 
   loadDailyStats(): void {
@@ -674,7 +693,8 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
         next: (result: any) => {
           this.checkingReplies = false;
           this.repliesChecked = true;
-          this.incomingReplies = result.replies || [];
+          const allReplies = result.replies || [];
+          this.incomingReplies = allReplies.filter((r: any) => !this.dismissedReplies.has(r.reply_id));
           const count = this.incomingReplies.length;
           const checked = result.threads_checked || 0;
           this.repliesMessage = count > 0
@@ -711,6 +731,12 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
   closeFollowUp(): void {
     this.followUpReply = null;
     this.followUpText = '';
+  }
+
+  dismissReply(reply: any): void {
+    this.dismissedReplies.add(reply.reply_id);
+    this.saveDismissedReplies();
+    this.incomingReplies = this.incomingReplies.filter(r => r.reply_id !== reply.reply_id);
   }
 
   copyFollowUp(): void {
