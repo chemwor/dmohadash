@@ -79,6 +79,14 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
         }
       </div>
 
+      <!-- Replies feedback -->
+      @if (repliesMessage) {
+        <div [class]="'mb-4 p-3 rounded-lg text-sm ' + (incomingReplies.length > 0 ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-slate-700/50 border border-slate-600 text-slate-400')">
+          {{ repliesMessage }}
+          <button (click)="repliesMessage = ''" class="ml-2 text-xs opacity-60 hover:opacity-100">dismiss</button>
+        </div>
+      }
+
       <!-- Incoming Replies -->
       @if (incomingReplies.length > 0) {
         <div class="mb-4">
@@ -490,6 +498,7 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
   incomingReplies: any[] = [];
   checkingReplies = false;
   repliesChecked = false;
+  repliesMessage = '';
 
   // Follow-up drafting
   followUpReply: any = null;
@@ -658,6 +667,7 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
 
   checkForReplies(): void {
     this.checkingReplies = true;
+    this.repliesMessage = '';
     this.leadsService.checkReplies()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
@@ -665,10 +675,16 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
           this.checkingReplies = false;
           this.repliesChecked = true;
           this.incomingReplies = result.replies || [];
+          const count = this.incomingReplies.length;
+          const checked = result.threads_checked || 0;
+          this.repliesMessage = count > 0
+            ? `Found ${count} new ${count === 1 ? 'reply' : 'replies'} across ${checked} threads`
+            : `No new replies found (${checked} threads checked)`;
         },
         error: () => {
           this.checkingReplies = false;
           this.repliesChecked = true;
+          this.repliesMessage = 'Failed to check for replies';
         }
       });
   }
@@ -718,13 +734,12 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
   // --- Manual Follow-Up (paste their reply) ---
 
   openManualFollowUp(lead: any): void {
-    console.log('openManualFollowUp called', lead?.id, lead?.title);
+    console.log('[DMHOA] Reply to Reply clicked', lead?.id);
     this.manualFollowUpLead = lead;
     this.manualTheirReply = '';
     this.manualFollowUpText = '';
     this.manualFollowUpLoading = false;
     this.manualFollowUpCopied = false;
-    console.log('manualFollowUpLead set:', !!this.manualFollowUpLead);
   }
 
   closeManualFollowUp(): void {

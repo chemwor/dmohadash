@@ -40,6 +40,9 @@
 [functions."content-data"]
   timeout = 15
 
+[functions."reddit-replies"]
+  timeout = 60
+
 [functions."content-kling"]
   timeout = 120
 

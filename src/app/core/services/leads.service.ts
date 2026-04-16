@@ -44,7 +44,8 @@ export class LeadsService {
   }
 
   checkReplies(): Observable<{ ok: boolean; threads_checked?: number; replies?: any[]; errors?: string[] }> {
-    return this.http.post<any>(`${this.apiUrl}/check-replies`, {}).pipe(
+    // Use Netlify function (not Heroku) because Reddit blocks Heroku IPs
+    return this.http.post<any>('/api/reddit-replies', {}).pipe(
       catchError(err => of({ ok: false, replies: [], error: err.message }))
     );
   }
