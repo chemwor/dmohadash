@@ -87,13 +87,50 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
         </div>
       }
 
-      <!-- Incoming Replies -->
-      @if (incomingReplies.length > 0) {
-        <div class="mb-4">
-          <div class="flex items-center gap-2 mb-2">
-            <h3 class="text-xs font-semibold uppercase tracking-wider text-red-400">Replies to You</h3>
-            <span class="bg-red-500/20 text-red-400 rounded-full px-2 py-0.5 text-[10px] font-bold">{{ incomingReplies.length }}</span>
+      <!-- Scraper feedback -->
+      @if (scraperMessage) {
+        <div [class]="'mb-4 p-3 rounded-lg text-sm ' + (scraperOk ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400')">
+          {{ scraperMessage }}
+          <button (click)="scraperMessage = ''" class="ml-2 text-xs opacity-60 hover:opacity-100">dismiss</button>
+        </div>
+      }
+
+      <!-- Filter Tabs -->
+      <div class="flex gap-1 mb-6 bg-slate-800 rounded-lg p-1">
+        @for (tab of tabs; track tab.key) {
+          <button
+            (click)="onTabChange(tab.key)"
+            [class]="activeTab === tab.key
+              ? 'flex-1 px-3 py-2 text-xs md:text-sm font-medium rounded-md bg-indigo-500 text-white transition-colors flex items-center justify-center gap-1.5'
+              : 'flex-1 px-3 py-2 text-xs md:text-sm font-medium rounded-md text-slate-400 hover:text-slate-200 transition-colors flex items-center justify-center gap-1.5'"
+          >
+            <span>{{ tab.label }}</span>
+            @if (tab.key === 'replies' && incomingReplies.length > 0) {
+              <span [class]="activeTab === tab.key
+                ? 'bg-white/20 text-white rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none'
+                : 'bg-red-500/20 text-red-400 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none'">
+                {{ incomingReplies.length }}
+              </span>
+            }
+          </button>
+        }
+      </div>
+
+      <!-- Replies tab content -->
+      @if (activeTab === 'replies') {
+        @if (incomingReplies.length === 0) {
+          <div class="card text-center py-12">
+            <svg class="w-12 h-12 text-slate-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+            </svg>
+            <p class="text-slate-400 text-sm">{{ checkingReplies ? 'Checking for replies…' : 'No new replies' }}</p>
+            @if (!checkingReplies) {
+              <button (click)="checkForReplies()" class="btn-primary text-sm mt-4">
+                Check for Replies
+              </button>
+            }
           </div>
+        } @else {
           <div class="space-y-2">
             @for (reply of incomingReplies; track reply.reply_id) {
               <div class="bg-red-500/5 border border-red-500/20 rounded-lg p-3">
@@ -133,33 +170,8 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
               </div>
             }
           </div>
-        </div>
-      }
-
-      <!-- Scraper feedback -->
-      @if (scraperMessage) {
-        <div [class]="'mb-4 p-3 rounded-lg text-sm ' + (scraperOk ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400')">
-          {{ scraperMessage }}
-          <button (click)="scraperMessage = ''" class="ml-2 text-xs opacity-60 hover:opacity-100">dismiss</button>
-        </div>
-      }
-
-      <!-- Filter Tabs -->
-      <div class="flex gap-1 mb-6 bg-slate-800 rounded-lg p-1">
-        @for (tab of tabs; track tab.key) {
-          <button
-            (click)="activeTab = tab.key; loadLeads()"
-            [class]="activeTab === tab.key
-              ? 'flex-1 px-3 py-2 text-xs md:text-sm font-medium rounded-md bg-indigo-500 text-white transition-colors'
-              : 'flex-1 px-3 py-2 text-xs md:text-sm font-medium rounded-md text-slate-400 hover:text-slate-200 transition-colors'"
-          >
-            {{ tab.label }}
-          </button>
         }
-      </div>
-
-      <!-- Loading -->
-      @if (loading) {
+      } @else if (loading) {
         <div class="space-y-3">
           @for (i of [1,2,3,4]; track i) {
             <div class="card">
@@ -532,6 +544,7 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
   tabs = [
     { key: 'all', label: 'All' },
     { key: 'new', label: 'New' },
+    { key: 'replies', label: 'Replies' },
     { key: 'replied', label: 'Replied' },
     { key: 'skipped', label: 'Not Relevant' },
   ];
@@ -580,7 +593,20 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  onTabChange(key: string): void {
+    this.activeTab = key;
+    if (key === 'replies') {
+      this.loading = false;
+      return;
+    }
+    this.loadLeads();
+  }
+
   loadLeads(): void {
+    if (this.activeTab === 'replies') {
+      this.loading = false;
+      return;
+    }
     this.loading = true;
     const status = this.activeTab === 'all' ? undefined : this.activeTab;
     this.leadsService.getLeads(status)
