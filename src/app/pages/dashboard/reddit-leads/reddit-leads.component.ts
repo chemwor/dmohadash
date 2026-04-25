@@ -34,9 +34,6 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
               Checking...
             } @else {
               Check Replies
-              @if (incomingReplies.length > 0) {
-                <span class="bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">{{ incomingReplies.length }}</span>
-              }
             }
           </button>
           <button
@@ -79,14 +76,6 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
         }
       </div>
 
-      <!-- Replies feedback -->
-      @if (repliesMessage) {
-        <div [class]="'mb-4 p-3 rounded-lg text-sm ' + (incomingReplies.length > 0 ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-slate-700/50 border border-slate-600 text-slate-400')">
-          {{ repliesMessage }}
-          <button (click)="repliesMessage = ''" class="ml-2 text-xs opacity-60 hover:opacity-100">dismiss</button>
-        </div>
-      }
-
       <!-- Scraper feedback -->
       @if (scraperMessage) {
         <div [class]="'mb-4 p-3 rounded-lg text-sm ' + (scraperOk ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-red-500/10 border border-red-500/20 text-red-400')">
@@ -118,6 +107,12 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
 
       <!-- Replies tab content -->
       @if (activeTab === 'replies') {
+        @if (repliesMessage) {
+          <div [class]="'mb-3 p-3 rounded-lg text-sm ' + (incomingReplies.length > 0 ? 'bg-green-500/10 border border-green-500/20 text-green-400' : 'bg-slate-700/50 border border-slate-600 text-slate-400')">
+            {{ repliesMessage }}
+            <button (click)="repliesMessage = ''" class="ml-2 text-xs opacity-60 hover:opacity-100">dismiss</button>
+          </div>
+        }
         @if (incomingReplies.length === 0) {
           <div class="card text-center py-12">
             <svg class="w-12 h-12 text-slate-600 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
