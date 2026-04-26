@@ -133,7 +133,7 @@ import { LeadsService, Lead } from '../../../core/services/leads.service';
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 mb-1 flex-wrap">
                       <span class="text-xs font-medium text-red-400">u/{{ reply.reply_author }}</span>
-                      <span class="text-[10px] text-slate-500">replied {{ replyTimeAgo(reply.reply_created_utc) }}</span>
+                      <span class="text-[10px] text-slate-500" [title]="replyFullDate(reply.reply_created_utc)">replied {{ replyDateLabel(reply.reply_created_utc) }}</span>
                       <span class="text-[10px] text-slate-600">on r/{{ reply.subreddit }}</span>
                     </div>
                     <p class="text-sm text-slate-200 mb-1">{{ reply.reply_body.length > 200 ? reply.reply_body.substring(0, 200) + '...' : reply.reply_body }}</p>
@@ -776,6 +776,19 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
     const diffHr = Math.floor(diffMin / 60);
     if (diffHr < 24) return `${diffHr}h ago`;
     return `${Math.floor(diffHr / 24)}d ago`;
+  }
+
+  replyDateLabel(utc: number): string {
+    if (!utc) return 'recently';
+    const date = new Date(utc * 1000);
+    const ago = this.replyTimeAgo(utc);
+    const dateStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return ago ? `${dateStr} (${ago})` : dateStr;
+  }
+
+  replyFullDate(utc: number): string {
+    if (!utc) return '';
+    return new Date(utc * 1000).toLocaleString();
   }
 
   // --- Manual Follow-Up (paste their reply) ---
