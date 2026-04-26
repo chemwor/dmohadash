@@ -538,8 +538,8 @@ export class RedditLeadsComponent implements OnInit, OnDestroy {
 
   tabs = [
     { key: 'all', label: 'All' },
+    { key: 'replies', label: 'Responses' },
     { key: 'new', label: 'New' },
-    { key: 'replies', label: 'Replies' },
     { key: 'replied', label: 'Replied' },
     { key: 'skipped', label: 'Not Relevant' },
   ];
