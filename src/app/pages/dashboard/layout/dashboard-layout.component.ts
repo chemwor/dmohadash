@@ -251,7 +251,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     { label: 'Google Ads', url: 'https://ads.google.com' },
     { label: 'Supabase', url: 'https://supabase.com/dashboard' },
     { label: 'Heroku', url: 'https://dashboard.heroku.com' },
-    { label: 'Klaviyo', url: 'https://www.klaviyo.com' },
+    { label: 'Resend', url: 'https://resend.com/emails' },
     { label: 'PostHog', url: 'https://us.posthog.com' },
     { label: 'Netlify', url: 'https://app.netlify.com' },
     { label: 'Search Console', url: 'https://search.google.com/search-console' },
@@ -266,6 +266,7 @@ export class DashboardLayoutComponent implements OnInit, OnDestroy {
     // --- Growth ---
     { path: '', label: '---Growth', icon: '' },
     { path: '/dashboard/reddit-leads', label: 'Reddit Leads', icon: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>' },
+    { path: '/dashboard/email', label: 'Email', icon: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>' },
     { path: '/dashboard/content', label: 'Video Content', icon: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>' },
     { path: '/dashboard/blog-manager', label: 'Blog Manager', icon: '<svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>' },
 

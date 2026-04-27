@@ -99,6 +99,10 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/dashboard/reddit-leads/reddit-leads.component').then(m => m.RedditLeadsComponent)
       },
       {
+        path: 'email',
+        loadComponent: () => import('./pages/dashboard/email/email.component').then(m => m.EmailComponent)
+      },
+      {
         path: 'ad-optimizer',
         loadComponent: () => import('./pages/dashboard/ad-optimizer/ad-optimizer.component').then(m => m.AdOptimizerComponent)
       },
