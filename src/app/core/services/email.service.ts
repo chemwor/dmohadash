@@ -25,6 +25,14 @@ export interface FunnelWindow {
   period: string;
 }
 
+export interface ClickWindow {
+  distinct_clickers: number;
+  total_clicks: number;
+  links_sent: number;
+  click_rate_pct: number;
+  period: string;
+}
+
 export interface RecentSend {
   id: string;
   to: string;
@@ -37,6 +45,7 @@ export interface RecentSend {
 export interface EmailDashboardData {
   resend: { today: ResendWindow; yesterday: ResendWindow; week: ResendWindow };
   funnel: { today: FunnelWindow; yesterday: FunnelWindow; week: FunnelWindow };
+  clicks: { today: ClickWindow; yesterday: ClickWindow; week: ClickWindow };
   recent_sends: RecentSend[];
   has_full_access: boolean;
 }
@@ -49,6 +58,7 @@ const EMPTY_WINDOW: ResendWindow = {
 };
 
 const EMPTY_FUNNEL: FunnelWindow = { total_unique: 0, by_stage: {}, nudges_sent: 0, period: '' };
+const EMPTY_CLICKS: ClickWindow = { distinct_clickers: 0, total_clicks: 0, links_sent: 0, click_rate_pct: 0, period: '' };
 
 @Injectable({ providedIn: 'root' })
 export class EmailService {
@@ -61,6 +71,7 @@ export class EmailService {
       catchError(() => of({
         resend: { today: EMPTY_WINDOW, yesterday: EMPTY_WINDOW, week: EMPTY_WINDOW },
         funnel: { today: EMPTY_FUNNEL, yesterday: EMPTY_FUNNEL, week: EMPTY_FUNNEL },
+        clicks: { today: EMPTY_CLICKS, yesterday: EMPTY_CLICKS, week: EMPTY_CLICKS },
         recent_sends: [],
         has_full_access: false,
       }))

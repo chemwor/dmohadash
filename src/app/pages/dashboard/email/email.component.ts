@@ -31,7 +31,7 @@ type Tab = 'funnel' | 'sends';
       </div>
 
       <!-- Top stat tiles (always visible) -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
         <div class="bg-slate-800 rounded-lg p-4 border border-slate-700">
           <div class="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Captured Yesterday</div>
           <div class="text-2xl font-bold text-slate-100">{{ data?.funnel?.yesterday?.total_unique ?? 0 }}</div>
@@ -46,6 +46,11 @@ type Tab = 'funnel' | 'sends';
           <div class="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Delivery Rate (7d)</div>
           <div class="text-2xl font-bold text-green-400">{{ data?.resend?.week?.delivery_rate_pct ?? 0 }}%</div>
           <div class="text-[10px] text-slate-500 mt-1">{{ data?.resend?.week?.counts?.delivered ?? 0 }} delivered</div>
+        </div>
+        <div class="bg-slate-800 rounded-lg p-4 border border-slate-700">
+          <div class="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Click Rate (7d)</div>
+          <div class="text-2xl font-bold text-indigo-400">{{ data?.clicks?.week?.click_rate_pct ?? 0 }}%</div>
+          <div class="text-[10px] text-slate-500 mt-1">{{ data?.clicks?.week?.distinct_clickers ?? 0 }} of {{ data?.clicks?.week?.links_sent ?? 0 }} clicked</div>
         </div>
         <div class="bg-slate-800 rounded-lg p-4 border border-slate-700">
           <div class="text-[10px] uppercase tracking-wider text-slate-500 mb-1">Bounce Rate (7d)</div>
